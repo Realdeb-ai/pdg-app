@@ -23,29 +23,31 @@ MODEL = st.secrets.get("GEMINI_MODEL", "gemini-3.5-flash")
 SESSION_LIMIT = min(int(st.secrets.get("SESSION_LIMIT", "5")), 5)
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
-st.set_page_config(page_title="Product Description Generator", page_icon="🛒", layout="centered")
+st.set_page_config(page_title="Product Description Generator", page_icon="•", layout="centered")
 
 # ---------- styling ----------
 CSS = """
 <style>
 /* hide default streamlit chrome */
 #MainMenu, footer, header {visibility: hidden;}
-.block-container {padding-top: 1.5rem; padding-bottom: 3rem; max-width: 780px;}
+.block-container {padding-top: 1.4rem; padding-bottom: 3rem; max-width: 760px;}
 
-/* hero header — soft, muted, elegant */
+/* hero header — calm, muted, refined */
 .hero {
-    background: linear-gradient(135deg, #1f2937 0%, #3730a3 100%);
+    background: linear-gradient(135deg, #1f2937 0%, #312e81 100%);
     border-radius: 16px;
-    padding: 26px 30px;
-    color: #eef2ff;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 18px rgba(31,41,55,.18);
+    padding: 30px 32px;
+    color: #f8fafc;
+    margin-bottom: 8px;
 }
-.hero h1 {margin: 0; font-size: 1.65rem; font-weight: 700; letter-spacing: -.01em; line-height: 1.25;}
-.hero p {margin: 9px 0 0; font-size: .97rem; color: #c7d2fe;}
+.hero h1 {margin: 0; font-size: 1.7rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.25;}
+.hero p {margin: 10px 0 0; font-size: .97rem; line-height: 1.5; color: #cbd5e1;}
+
+/* usage line */
+.usage {text-align: right; font-size: .82rem; color: #94a3b8; margin: 2px 0 10px;}
 
 /* section labels */
-.section {font-weight: 700; font-size: 1.02rem; margin: 8px 0 2px; color: inherit;}
+.section {font-weight: 600; font-size: 1.0rem; margin: 18px 0 4px; opacity: .9;}
 
 /* inputs */
 .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
@@ -54,25 +56,27 @@ CSS = """
 
 /* buttons */
 .stButton > button, .stDownloadButton > button {
-    border-radius: 12px !important;
-    font-weight: 700 !important;
+    border-radius: 11px !important;
+    font-weight: 600 !important;
     padding: .6rem 1rem !important;
 }
 div[data-testid="stButton"] button[kind="primary"] {
-    background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%) !important;
+    background: #4f46e5 !important;
     border: none !important;
-    font-size: 1.03rem !important;
-    padding: .75rem 1rem !important;
-    box-shadow: 0 4px 14px rgba(67,56,202,.28) !important;
+    color: #fff !important;
+    font-size: 1.02rem !important;
+    padding: .78rem 1rem !important;
+    margin-top: .3rem !important;
 }
+div[data-testid="stButton"] button[kind="primary"]:hover {background: #4338ca !important;}
 
 /* result card */
 .result-card {
-    background: rgba(79,70,229,.06);
-    border: 1px solid rgba(79,70,229,.18);
+    background: rgba(79,70,229,.05);
+    border: 1px solid rgba(79,70,229,.16);
     border-radius: 14px;
-    padding: 6px 18px 14px;
-    margin-top: 8px;
+    padding: 4px 18px 14px;
+    margin-top: 10px;
 }
 </style>
 """
@@ -89,25 +93,25 @@ UI_LANGS = {
 T = {
     "en": {
         "title": "Product Description Generator",
-        "caption": "Turn a few product details into ready-to-publish SEO listings for Shopify, Amazon, Etsy & more — in seconds.",
-        "intro": "Just fill in your **product name** and a few details, then press **Generate**. Everything else is optional.",
-        "pw_title": "🛒 Product Description Generator",
+        "caption": "Turn a few product details into ready-to-publish SEO listings for Shopify, Amazon, Etsy and more — in seconds.",
+        "intro": "Enter your **product name** and a few details, then press **Generate**. Everything else is optional.",
+        "pw_title": "Product Description Generator",
         "pw_prompt": "Enter access password", "pw_btn": "Enter", "pw_wrong": "Wrong password.",
-        "gens_left": "✨ Generations left this session: **{n}** / {lim}",
-        "sec_product": "1 · Your product", "sec_settings": "2 · Settings",
+        "gens_left": "Generations left this session: {n} / {lim}",
+        "sec_product": "Your product", "sec_settings": "Settings",
         "product_name": "Product name", "product_name_ph": "e.g. Handmade Ceramic Coffee Mug",
         "features": "Key features / details", "features_ph": "Material, size, color, benefits, what makes it special...",
         "marketplace": "Marketplace", "out_lang": "Output language",
-        "adv": "⚙️  More options (optional)",
+        "adv": "More options (optional)",
         "category": "Category", "category_ph": "e.g. Kitchen & Dining",
         "tone": "Tone", "keywords": "Focus keywords (comma-separated)", "keywords_ph": "ceramic mug, handmade gift",
-        "photo": "📷 Upload a product photo — the AI reads it and writes the listing",
-        "url": "🔗 Or paste a product page URL", "url_ph": "https://...",
-        "generate": "✨ Generate my listing", "spinner": "Writing your listing...",
-        "done": "✅ Your listing is ready — copy each section below.",
+        "photo": "Upload a product photo — the AI reads it and writes the listing",
+        "url": "Or paste a product page URL", "url_ph": "https://...",
+        "generate": "Generate my listing", "spinner": "Writing your listing...",
+        "done": "Your listing is ready — copy each section below.",
         "h_title": "SEO Title", "h_desc": "Description", "h_bullets": "Bullet Points",
         "h_tags": "Tags / Keywords", "h_meta": "Meta Description",
-        "download": "⬇️ Download as JSON", "footer": "Powered by Google Gemini",
+        "download": "Download as JSON", "footer": "Powered by Google Gemini",
         "err_nokey": "GEMINI_API_KEY is not set in app secrets.",
         "err_limit": "Session limit reached. Come back later or upgrade.",
         "warn_input": "Give me something to work with: a product name, a photo, or a URL.",
@@ -119,24 +123,24 @@ T = {
     "ru": {
         "title": "Генератор описаний товаров",
         "caption": "Превратите пару деталей о товаре в готовые SEO-описания для Shopify, Amazon, Etsy и других — за секунды.",
-        "intro": "Просто впишите **название товара** и пару деталей, затем нажмите **Сгенерировать**. Всё остальное — по желанию.",
-        "pw_title": "🛒 Генератор описаний товаров",
+        "intro": "Впишите **название товара** и пару деталей, затем нажмите **Сгенерировать**. Всё остальное — по желанию.",
+        "pw_title": "Генератор описаний товаров",
         "pw_prompt": "Введите пароль доступа", "pw_btn": "Войти", "pw_wrong": "Неверный пароль.",
-        "gens_left": "✨ Осталось генераций в этой сессии: **{n}** / {lim}",
-        "sec_product": "1 · Ваш товар", "sec_settings": "2 · Настройки",
+        "gens_left": "Осталось генераций в этой сессии: {n} / {lim}",
+        "sec_product": "Ваш товар", "sec_settings": "Настройки",
         "product_name": "Название товара", "product_name_ph": "напр. Керамическая кофейная кружка ручной работы",
         "features": "Ключевые характеристики / детали", "features_ph": "Материал, размер, цвет, преимущества, чем особенный...",
         "marketplace": "Площадка", "out_lang": "Язык результата",
-        "adv": "⚙️  Больше настроек (необязательно)",
+        "adv": "Больше настроек (необязательно)",
         "category": "Категория", "category_ph": "напр. Кухня и столовая",
         "tone": "Тон", "keywords": "Ключевые слова (через запятую)", "keywords_ph": "керамическая кружка, подарок ручной работы",
-        "photo": "📷 Загрузите фото товара — ИИ прочитает его и напишет описание",
-        "url": "🔗 Или вставьте ссылку на страницу товара", "url_ph": "https://...",
-        "generate": "✨ Сгенерировать описание", "spinner": "Пишу ваше описание...",
-        "done": "✅ Описание готово — скопируйте каждый раздел ниже.",
+        "photo": "Загрузите фото товара — ИИ прочитает его и напишет описание",
+        "url": "Или вставьте ссылку на страницу товара", "url_ph": "https://...",
+        "generate": "Сгенерировать описание", "spinner": "Пишу ваше описание...",
+        "done": "Описание готово — скопируйте каждый раздел ниже.",
         "h_title": "SEO-заголовок", "h_desc": "Описание", "h_bullets": "Списком (буллеты)",
         "h_tags": "Теги / Ключевые слова", "h_meta": "Meta-описание",
-        "download": "⬇️ Скачать в JSON", "footer": "Работает на Google Gemini",
+        "download": "Скачать в JSON", "footer": "Работает на Google Gemini",
         "err_nokey": "GEMINI_API_KEY не задан в секретах приложения.",
         "err_limit": "Лимит сессии исчерпан. Зайдите позже или оформите подписку.",
         "warn_input": "Дайте с чем работать: название товара, фото или ссылку.",
@@ -148,24 +152,24 @@ T = {
     "es": {
         "title": "Generador de descripciones de productos",
         "caption": "Convierte unos pocos datos del producto en fichas SEO listas para publicar en Shopify, Amazon, Etsy y más — en segundos.",
-        "intro": "Solo escribe el **nombre del producto** y algunos detalles, luego pulsa **Generar**. Todo lo demás es opcional.",
-        "pw_title": "🛒 Generador de descripciones de productos",
+        "intro": "Escribe el **nombre del producto** y algunos detalles, luego pulsa **Generar**. Todo lo demás es opcional.",
+        "pw_title": "Generador de descripciones de productos",
         "pw_prompt": "Introduce la contraseña de acceso", "pw_btn": "Entrar", "pw_wrong": "Contraseña incorrecta.",
-        "gens_left": "✨ Generaciones restantes en esta sesión: **{n}** / {lim}",
-        "sec_product": "1 · Tu producto", "sec_settings": "2 · Ajustes",
+        "gens_left": "Generaciones restantes en esta sesión: {n} / {lim}",
+        "sec_product": "Tu producto", "sec_settings": "Ajustes",
         "product_name": "Nombre del producto", "product_name_ph": "p. ej. Taza de café de cerámica hecha a mano",
         "features": "Características / detalles clave", "features_ph": "Material, tamaño, color, ventajas, qué lo hace especial...",
         "marketplace": "Marketplace", "out_lang": "Idioma del resultado",
-        "adv": "⚙️  Más opciones (opcional)",
+        "adv": "Más opciones (opcional)",
         "category": "Categoría", "category_ph": "p. ej. Cocina y comedor",
         "tone": "Tono", "keywords": "Palabras clave (separadas por comas)", "keywords_ph": "taza cerámica, regalo hecho a mano",
-        "photo": "📷 Sube una foto del producto — la IA la analiza y escribe la ficha",
-        "url": "🔗 O pega la URL de la página del producto", "url_ph": "https://...",
-        "generate": "✨ Generar mi ficha", "spinner": "Escribiendo tu ficha...",
-        "done": "✅ Tu ficha está lista — copia cada sección abajo.",
+        "photo": "Sube una foto del producto — la IA la analiza y escribe la ficha",
+        "url": "O pega la URL de la página del producto", "url_ph": "https://...",
+        "generate": "Generar mi ficha", "spinner": "Escribiendo tu ficha...",
+        "done": "Tu ficha está lista — copia cada sección abajo.",
         "h_title": "Título SEO", "h_desc": "Descripción", "h_bullets": "Puntos destacados",
         "h_tags": "Etiquetas / Palabras clave", "h_meta": "Meta descripción",
-        "download": "⬇️ Descargar en JSON", "footer": "Con la tecnología de Google Gemini",
+        "download": "Descargar en JSON", "footer": "Con la tecnología de Google Gemini",
         "err_nokey": "GEMINI_API_KEY no está configurada en los secretos de la app.",
         "err_limit": "Límite de sesión alcanzado. Vuelve más tarde o mejora tu plan.",
         "warn_input": "Dame algo con qué trabajar: nombre del producto, foto o URL.",
@@ -177,24 +181,24 @@ T = {
     "fr": {
         "title": "Générateur de descriptions produit",
         "caption": "Transformez quelques infos produit en fiches SEO prêtes à publier sur Shopify, Amazon, Etsy et plus — en quelques secondes.",
-        "intro": "Saisissez simplement le **nom du produit** et quelques détails, puis cliquez sur **Générer**. Le reste est facultatif.",
-        "pw_title": "🛒 Générateur de descriptions produit",
+        "intro": "Saisissez le **nom du produit** et quelques détails, puis cliquez sur **Générer**. Le reste est facultatif.",
+        "pw_title": "Générateur de descriptions produit",
         "pw_prompt": "Saisissez le mot de passe d'accès", "pw_btn": "Entrer", "pw_wrong": "Mot de passe incorrect.",
-        "gens_left": "✨ Générations restantes cette session : **{n}** / {lim}",
-        "sec_product": "1 · Votre produit", "sec_settings": "2 · Paramètres",
+        "gens_left": "Générations restantes cette session : {n} / {lim}",
+        "sec_product": "Votre produit", "sec_settings": "Paramètres",
         "product_name": "Nom du produit", "product_name_ph": "ex. Mug en céramique fait main",
         "features": "Caractéristiques / détails clés", "features_ph": "Matériau, taille, couleur, avantages, ce qui le rend unique...",
         "marketplace": "Marketplace", "out_lang": "Langue du résultat",
-        "adv": "⚙️  Plus d'options (facultatif)",
+        "adv": "Plus d'options (facultatif)",
         "category": "Catégorie", "category_ph": "ex. Cuisine et salle à manger",
         "tone": "Ton", "keywords": "Mots-clés (séparés par des virgules)", "keywords_ph": "mug céramique, cadeau fait main",
-        "photo": "📷 Importez une photo du produit — l'IA l'analyse et rédige la fiche",
-        "url": "🔗 Ou collez l'URL de la page produit", "url_ph": "https://...",
-        "generate": "✨ Générer ma fiche", "spinner": "Rédaction de votre fiche...",
-        "done": "✅ Votre fiche est prête — copiez chaque section ci-dessous.",
+        "photo": "Importez une photo du produit — l'IA l'analyse et rédige la fiche",
+        "url": "Ou collez l'URL de la page produit", "url_ph": "https://...",
+        "generate": "Générer ma fiche", "spinner": "Rédaction de votre fiche...",
+        "done": "Votre fiche est prête — copiez chaque section ci-dessous.",
         "h_title": "Titre SEO", "h_desc": "Description", "h_bullets": "Points clés",
         "h_tags": "Tags / Mots-clés", "h_meta": "Méta description",
-        "download": "⬇️ Télécharger en JSON", "footer": "Propulsé par Google Gemini",
+        "download": "Télécharger en JSON", "footer": "Propulsé par Google Gemini",
         "err_nokey": "GEMINI_API_KEY n'est pas défini dans les secrets de l'app.",
         "err_limit": "Limite de session atteinte. Revenez plus tard ou passez à l'offre supérieure.",
         "warn_input": "Donnez-moi de quoi travailler : nom du produit, photo ou URL.",
@@ -205,25 +209,25 @@ T = {
     },
     "de": {
         "title": "Produktbeschreibungs-Generator",
-        "caption": "Verwandeln Sie ein paar Produktangaben in Sekunden in veröffentlichungsfertige SEO-Listings für Shopify, Amazon, Etsy & mehr.",
-        "intro": "Geben Sie einfach den **Produktnamen** und ein paar Details ein und klicken Sie auf **Generieren**. Alles andere ist optional.",
-        "pw_title": "🛒 Produktbeschreibungs-Generator",
+        "caption": "Verwandeln Sie ein paar Produktangaben in Sekunden in veröffentlichungsfertige SEO-Listings für Shopify, Amazon, Etsy und mehr.",
+        "intro": "Geben Sie den **Produktnamen** und ein paar Details ein und klicken Sie auf **Generieren**. Alles andere ist optional.",
+        "pw_title": "Produktbeschreibungs-Generator",
         "pw_prompt": "Zugangspasswort eingeben", "pw_btn": "Anmelden", "pw_wrong": "Falsches Passwort.",
-        "gens_left": "✨ Verbleibende Generierungen in dieser Sitzung: **{n}** / {lim}",
-        "sec_product": "1 · Ihr Produkt", "sec_settings": "2 · Einstellungen",
+        "gens_left": "Verbleibende Generierungen in dieser Sitzung: {n} / {lim}",
+        "sec_product": "Ihr Produkt", "sec_settings": "Einstellungen",
         "product_name": "Produktname", "product_name_ph": "z. B. Handgemachte Kaffeetasse aus Keramik",
         "features": "Wichtige Merkmale / Details", "features_ph": "Material, Größe, Farbe, Vorteile, was es besonders macht...",
         "marketplace": "Marktplatz", "out_lang": "Sprache des Ergebnisses",
-        "adv": "⚙️  Mehr Optionen (optional)",
+        "adv": "Mehr Optionen (optional)",
         "category": "Kategorie", "category_ph": "z. B. Küche & Esszimmer",
         "tone": "Tonalität", "keywords": "Keywords (durch Kommas getrennt)", "keywords_ph": "Keramiktasse, handgemachtes Geschenk",
-        "photo": "📷 Produktfoto hochladen — die KI analysiert es und schreibt das Listing",
-        "url": "🔗 Oder Produktseiten-URL einfügen", "url_ph": "https://...",
-        "generate": "✨ Listing generieren", "spinner": "Ihr Listing wird geschrieben...",
-        "done": "✅ Ihr Listing ist fertig — kopieren Sie jeden Abschnitt unten.",
+        "photo": "Produktfoto hochladen — die KI analysiert es und schreibt das Listing",
+        "url": "Oder Produktseiten-URL einfügen", "url_ph": "https://...",
+        "generate": "Listing generieren", "spinner": "Ihr Listing wird geschrieben...",
+        "done": "Ihr Listing ist fertig — kopieren Sie jeden Abschnitt unten.",
         "h_title": "SEO-Titel", "h_desc": "Beschreibung", "h_bullets": "Stichpunkte",
         "h_tags": "Tags / Keywords", "h_meta": "Meta-Beschreibung",
-        "download": "⬇️ Als JSON herunterladen", "footer": "Unterstützt von Google Gemini",
+        "download": "Als JSON herunterladen", "footer": "Unterstützt von Google Gemini",
         "err_nokey": "GEMINI_API_KEY ist in den App-Secrets nicht gesetzt.",
         "err_limit": "Sitzungslimit erreicht. Kommen Sie später wieder oder upgraden Sie.",
         "warn_input": "Geben Sie mir etwas zum Arbeiten: Produktname, Foto oder URL.",
@@ -235,24 +239,24 @@ T = {
     "it": {
         "title": "Generatore di descrizioni prodotto",
         "caption": "Trasforma pochi dati sul prodotto in schede SEO pronte da pubblicare su Shopify, Amazon, Etsy e altri — in pochi secondi.",
-        "intro": "Inserisci semplicemente il **nome del prodotto** e qualche dettaglio, poi premi **Genera**. Tutto il resto è facoltativo.",
-        "pw_title": "🛒 Generatore di descrizioni prodotto",
+        "intro": "Inserisci il **nome del prodotto** e qualche dettaglio, poi premi **Genera**. Tutto il resto è facoltativo.",
+        "pw_title": "Generatore di descrizioni prodotto",
         "pw_prompt": "Inserisci la password di accesso", "pw_btn": "Entra", "pw_wrong": "Password errata.",
-        "gens_left": "✨ Generazioni rimaste in questa sessione: **{n}** / {lim}",
-        "sec_product": "1 · Il tuo prodotto", "sec_settings": "2 · Impostazioni",
+        "gens_left": "Generazioni rimaste in questa sessione: {n} / {lim}",
+        "sec_product": "Il tuo prodotto", "sec_settings": "Impostazioni",
         "product_name": "Nome del prodotto", "product_name_ph": "es. Tazza da caffè in ceramica fatta a mano",
         "features": "Caratteristiche / dettagli principali", "features_ph": "Materiale, dimensioni, colore, vantaggi, cosa lo rende speciale...",
         "marketplace": "Marketplace", "out_lang": "Lingua del risultato",
-        "adv": "⚙️  Altre opzioni (facoltativo)",
+        "adv": "Altre opzioni (facoltativo)",
         "category": "Categoria", "category_ph": "es. Cucina e sala da pranzo",
         "tone": "Tono", "keywords": "Parole chiave (separate da virgole)", "keywords_ph": "tazza ceramica, regalo fatto a mano",
-        "photo": "📷 Carica una foto del prodotto — l'IA la analizza e scrive la scheda",
-        "url": "🔗 Oppure incolla l'URL della pagina prodotto", "url_ph": "https://...",
-        "generate": "✨ Genera la scheda", "spinner": "Sto scrivendo la tua scheda...",
-        "done": "✅ La tua scheda è pronta — copia ogni sezione qui sotto.",
+        "photo": "Carica una foto del prodotto — l'IA la analizza e scrive la scheda",
+        "url": "Oppure incolla l'URL della pagina prodotto", "url_ph": "https://...",
+        "generate": "Genera la scheda", "spinner": "Sto scrivendo la tua scheda...",
+        "done": "La tua scheda è pronta — copia ogni sezione qui sotto.",
         "h_title": "Titolo SEO", "h_desc": "Descrizione", "h_bullets": "Punti elenco",
         "h_tags": "Tag / Parole chiave", "h_meta": "Meta descrizione",
-        "download": "⬇️ Scarica in JSON", "footer": "Basato su Google Gemini",
+        "download": "Scarica in JSON", "footer": "Basato su Google Gemini",
         "err_nokey": "GEMINI_API_KEY non è impostata nei secrets dell'app.",
         "err_limit": "Limite di sessione raggiunto. Torna più tardi o passa a un piano superiore.",
         "warn_input": "Dammi qualcosa su cui lavorare: nome del prodotto, foto o URL.",
@@ -264,24 +268,24 @@ T = {
     "pt": {
         "title": "Gerador de descrições de produtos",
         "caption": "Transforme alguns dados do produto em anúncios SEO prontos para publicar na Shopify, Amazon, Etsy e mais — em segundos.",
-        "intro": "Basta escrever o **nome do produto** e alguns detalhes e clicar em **Gerar**. Todo o resto é opcional.",
-        "pw_title": "🛒 Gerador de descrições de produtos",
+        "intro": "Escreva o **nome do produto** e alguns detalhes e clique em **Gerar**. Todo o resto é opcional.",
+        "pw_title": "Gerador de descrições de produtos",
         "pw_prompt": "Insira a senha de acesso", "pw_btn": "Entrar", "pw_wrong": "Senha incorreta.",
-        "gens_left": "✨ Gerações restantes nesta sessão: **{n}** / {lim}",
-        "sec_product": "1 · Seu produto", "sec_settings": "2 · Configurações",
+        "gens_left": "Gerações restantes nesta sessão: {n} / {lim}",
+        "sec_product": "Seu produto", "sec_settings": "Configurações",
         "product_name": "Nome do produto", "product_name_ph": "ex. Caneca de café de cerâmica feita à mão",
         "features": "Características / detalhes principais", "features_ph": "Material, tamanho, cor, benefícios, o que o torna especial...",
         "marketplace": "Marketplace", "out_lang": "Idioma do resultado",
-        "adv": "⚙️  Mais opções (opcional)",
+        "adv": "Mais opções (opcional)",
         "category": "Categoria", "category_ph": "ex. Cozinha e sala de jantar",
         "tone": "Tom", "keywords": "Palavras-chave (separadas por vírgulas)", "keywords_ph": "caneca cerâmica, presente artesanal",
-        "photo": "📷 Envie uma foto do produto — a IA analisa e escreve o anúncio",
-        "url": "🔗 Ou cole o URL da página do produto", "url_ph": "https://...",
-        "generate": "✨ Gerar meu anúncio", "spinner": "Escrevendo seu anúncio...",
-        "done": "✅ Seu anúncio está pronto — copie cada seção abaixo.",
+        "photo": "Envie uma foto do produto — a IA analisa e escreve o anúncio",
+        "url": "Ou cole o URL da página do produto", "url_ph": "https://...",
+        "generate": "Gerar meu anúncio", "spinner": "Escrevendo seu anúncio...",
+        "done": "Seu anúncio está pronto — copie cada seção abaixo.",
         "h_title": "Título SEO", "h_desc": "Descrição", "h_bullets": "Tópicos",
         "h_tags": "Tags / Palavras-chave", "h_meta": "Meta descrição",
-        "download": "⬇️ Baixar em JSON", "footer": "Desenvolvido com Google Gemini",
+        "download": "Baixar em JSON", "footer": "Desenvolvido com Google Gemini",
         "err_nokey": "GEMINI_API_KEY não está definida nos secrets do app.",
         "err_limit": "Limite da sessão atingido. Volte mais tarde ou faça upgrade.",
         "warn_input": "Dê-me algo para trabalhar: nome do produto, foto ou URL.",
@@ -295,7 +299,7 @@ T = {
 # ---------- UI language picker (top-right) ----------
 _a, _b = st.columns([3, 1])
 with _b:
-    ui_lang_name = st.selectbox("🌐", list(UI_LANGS.keys()), label_visibility="collapsed", key="ui_lang")
+    ui_lang_name = st.selectbox("Language", list(UI_LANGS.keys()), label_visibility="collapsed", key="ui_lang")
 t = T[UI_LANGS[ui_lang_name]]
 
 # ---------- password gate ----------
@@ -395,10 +399,11 @@ def generate(prompt: str, image_bytes=None, image_mime=None) -> dict:
     return json.loads(text)
 
 # ---------- UI ----------
-st.markdown(f"<div class='hero'><h1>🛒 {t['title']}</h1><p>{t['caption']}</p></div>", unsafe_allow_html=True)
+st.markdown(f"<div class='hero'><h1>{t['title']}</h1><p>{t['caption']}</p></div>", unsafe_allow_html=True)
 
 remaining = SESSION_LIMIT - st.session_state["used"]
-st.info(t["gens_left"].format(n=max(remaining, 0), lim=SESSION_LIMIT))
+st.markdown(f"<div class='usage'>{t['gens_left'].format(n=max(remaining, 0), lim=SESSION_LIMIT)}</div>",
+            unsafe_allow_html=True)
 st.markdown(t["intro"])
 
 # --- essentials ---
