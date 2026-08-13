@@ -94,7 +94,8 @@ T = {
     "en": {
         "title": "Product Description Generator",
         "caption": "Turn a few product details into ready-to-publish SEO listings for Shopify, Amazon, Etsy and more — in seconds.",
-        "intro": "Enter your **product name** and a few details, then press **Generate**. Everything else is optional.",
+        "intro": "Fastest way: **upload a product photo** or **paste a product URL** — the AI does the rest. Or describe the product yourself below.",
+        "or_manual": "Or describe the product manually",
         "pw_title": "Product Description Generator",
         "pw_prompt": "Enter access password", "pw_btn": "Enter", "pw_wrong": "Wrong password.",
         "gens_left": "Generations left this session: {n} / {lim}",
@@ -123,7 +124,8 @@ T = {
     "ru": {
         "title": "Генератор описаний товаров",
         "caption": "Превратите пару деталей о товаре в готовые SEO-описания для Shopify, Amazon, Etsy и других — за секунды.",
-        "intro": "Впишите **название товара** и пару деталей, затем нажмите **Сгенерировать**. Всё остальное — по желанию.",
+        "intro": "Самый быстрый способ: **загрузите фото товара** или **вставьте ссылку** — остальное сделает ИИ. Или опишите товар вручную ниже.",
+        "or_manual": "Или опишите товар вручную",
         "pw_title": "Генератор описаний товаров",
         "pw_prompt": "Введите пароль доступа", "pw_btn": "Войти", "pw_wrong": "Неверный пароль.",
         "gens_left": "Осталось генераций в этой сессии: {n} / {lim}",
@@ -152,7 +154,8 @@ T = {
     "es": {
         "title": "Generador de descripciones de productos",
         "caption": "Convierte unos pocos datos del producto en fichas SEO listas para publicar en Shopify, Amazon, Etsy y más — en segundos.",
-        "intro": "Escribe el **nombre del producto** y algunos detalles, luego pulsa **Generar**. Todo lo demás es opcional.",
+        "intro": "La forma más rápida: **sube una foto del producto** o **pega una URL** — la IA hace el resto. O describe el producto tú mismo abajo.",
+        "or_manual": "O describe el producto manualmente",
         "pw_title": "Generador de descripciones de productos",
         "pw_prompt": "Introduce la contraseña de acceso", "pw_btn": "Entrar", "pw_wrong": "Contraseña incorrecta.",
         "gens_left": "Generaciones restantes en esta sesión: {n} / {lim}",
@@ -181,7 +184,8 @@ T = {
     "fr": {
         "title": "Générateur de descriptions produit",
         "caption": "Transformez quelques infos produit en fiches SEO prêtes à publier sur Shopify, Amazon, Etsy et plus — en quelques secondes.",
-        "intro": "Saisissez le **nom du produit** et quelques détails, puis cliquez sur **Générer**. Le reste est facultatif.",
+        "intro": "Le plus rapide : **importez une photo du produit** ou **collez une URL** — l'IA fait le reste. Ou décrivez le produit vous-même ci-dessous.",
+        "or_manual": "Ou décrivez le produit manuellement",
         "pw_title": "Générateur de descriptions produit",
         "pw_prompt": "Saisissez le mot de passe d'accès", "pw_btn": "Entrer", "pw_wrong": "Mot de passe incorrect.",
         "gens_left": "Générations restantes cette session : {n} / {lim}",
@@ -210,7 +214,8 @@ T = {
     "de": {
         "title": "Produktbeschreibungs-Generator",
         "caption": "Verwandeln Sie ein paar Produktangaben in Sekunden in veröffentlichungsfertige SEO-Listings für Shopify, Amazon, Etsy und mehr.",
-        "intro": "Geben Sie den **Produktnamen** und ein paar Details ein und klicken Sie auf **Generieren**. Alles andere ist optional.",
+        "intro": "Am schnellsten: **Produktfoto hochladen** oder **URL einfügen** — die KI erledigt den Rest. Oder beschreiben Sie das Produkt unten selbst.",
+        "or_manual": "Oder beschreiben Sie das Produkt manuell",
         "pw_title": "Produktbeschreibungs-Generator",
         "pw_prompt": "Zugangspasswort eingeben", "pw_btn": "Anmelden", "pw_wrong": "Falsches Passwort.",
         "gens_left": "Verbleibende Generierungen in dieser Sitzung: {n} / {lim}",
@@ -239,7 +244,8 @@ T = {
     "it": {
         "title": "Generatore di descrizioni prodotto",
         "caption": "Trasforma pochi dati sul prodotto in schede SEO pronte da pubblicare su Shopify, Amazon, Etsy e altri — in pochi secondi.",
-        "intro": "Inserisci il **nome del prodotto** e qualche dettaglio, poi premi **Genera**. Tutto il resto è facoltativo.",
+        "intro": "Il modo più rapido: **carica una foto del prodotto** o **incolla un URL** — l'IA fa il resto. Oppure descrivi il prodotto tu stesso qui sotto.",
+        "or_manual": "Oppure descrivi il prodotto manualmente",
         "pw_title": "Generatore di descrizioni prodotto",
         "pw_prompt": "Inserisci la password di accesso", "pw_btn": "Entra", "pw_wrong": "Password errata.",
         "gens_left": "Generazioni rimaste in questa sessione: {n} / {lim}",
@@ -268,7 +274,8 @@ T = {
     "pt": {
         "title": "Gerador de descrições de produtos",
         "caption": "Transforme alguns dados do produto em anúncios SEO prontos para publicar na Shopify, Amazon, Etsy e mais — em segundos.",
-        "intro": "Escreva o **nome do produto** e alguns detalhes e clique em **Gerar**. Todo o resto é opcional.",
+        "intro": "A forma mais rápida: **envie uma foto do produto** ou **cole um URL** — a IA faz o resto. Ou descreva o produto você mesmo abaixo.",
+        "or_manual": "Ou descreva o produto manualmente",
         "pw_title": "Gerador de descrições de produtos",
         "pw_prompt": "Insira a senha de acesso", "pw_btn": "Entrar", "pw_wrong": "Senha incorreta.",
         "gens_left": "Gerações restantes nesta sessão: {n} / {lim}",
@@ -406,10 +413,16 @@ st.markdown(f"<div class='usage'>{t['gens_left'].format(n=max(remaining, 0), lim
             unsafe_allow_html=True)
 st.markdown(t["intro"])
 
-# --- essentials ---
+# --- product: photo / URL are the headline feature, shown up front ---
 st.markdown(f"<div class='section'>{t['sec_product']}</div>", unsafe_allow_html=True)
+photo = st.file_uploader(t["photo"], type=["jpg", "jpeg", "png"])
+if photo:
+    st.image(photo, width=220)
+url = st.text_input(t["url"], placeholder=t["url_ph"])
+
+st.caption(t["or_manual"])
 name = st.text_input(t["product_name"], placeholder=t["product_name_ph"])
-features = st.text_area(t["features"], height=110, placeholder=t["features_ph"])
+features = st.text_area(t["features"], height=100, placeholder=t["features_ph"])
 
 st.markdown(f"<div class='section'>{t['sec_settings']}</div>", unsafe_allow_html=True)
 c1, c2 = st.columns(2)
@@ -427,10 +440,6 @@ with st.expander(t["adv"]):
     tone_values = ["Professional", "Friendly", "Luxury", "Playful", "Minimalist"]
     tone = st.selectbox(t["tone"], tone_values, format_func=lambda v: t["tones"].get(v, v))
     keywords = st.text_input(t["keywords"], placeholder=t["keywords_ph"])
-    photo = st.file_uploader(t["photo"], type=["jpg", "jpeg", "png"])
-    if photo:
-        st.image(photo, width=200)
-    url = st.text_input(t["url"], placeholder=t["url_ph"])
 
 st.write("")
 if st.button(t["generate"], type="primary", use_container_width=True):
