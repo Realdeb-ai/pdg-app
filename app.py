@@ -478,6 +478,3 @@ if st.button(t["generate"], type="primary", use_container_width=True):
                 st.error(t["err_format"])
             except Exception as e:
                 st.error(str(e))
-
-st.divider()
-st.caption(t["footer"])
