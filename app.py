@@ -309,24 +309,9 @@ with _b:
     ui_lang_name = st.selectbox("Language", list(UI_LANGS.keys()), label_visibility="collapsed", key="ui_lang")
 t = T[UI_LANGS[ui_lang_name]]
 
-# ---------- password gate ----------
-def check_password() -> bool:
-    if not APP_PASSWORD:
-        return True
-    if st.session_state.get("authed"):
-        return True
-    st.markdown(f"<div class='hero'><h1>{t['pw_title']}</h1></div>", unsafe_allow_html=True)
-    pw = st.text_input(t["pw_prompt"], type="password")
-    if st.button(t["pw_btn"], type="primary"):
-        if pw == APP_PASSWORD:
-            st.session_state["authed"] = True
-            st.rerun()
-        else:
-            st.error(t["pw_wrong"])
-    return False
-
-if not check_password():
-    st.stop()
+# ---------- public access ----------
+# No password gate: the generator is public so any visitor can use it.
+# Abuse is limited by SESSION_LIMIT (generations per visitor session).
 
 # ---------- session usage limit ----------
 if "used" not in st.session_state:
