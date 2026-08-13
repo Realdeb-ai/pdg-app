@@ -19,8 +19,8 @@ import requests
 API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 APP_PASSWORD = st.secrets.get("APP_PASSWORD", "")
 MODEL = st.secrets.get("GEMINI_MODEL", "gemini-3.5-flash")
-# Free-tier friendly: never allow more than 5 generations per visitor session.
-SESSION_LIMIT = min(int(st.secrets.get("SESSION_LIMIT", "5")), 5)
+# Free tier: 10 generations per visitor session (will become per-account after auth).
+SESSION_LIMIT = min(int(st.secrets.get("SESSION_LIMIT", "10")), 10)
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
 st.set_page_config(page_title="Product Description Generator", page_icon="•", layout="centered")
@@ -81,6 +81,110 @@ div[data-testid="stButton"] button[kind="primary"]:hover {background: #4338ca !i
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
+
+# ---------- Supabase auth (email + password) ----------
+SUPABASE_URL = st.secrets.get("SUPABASE_URL", "https://jpghxxnnvrbqzdmbkpqj.supabase.co").rstrip("/")
+SUPABASE_ANON = st.secrets.get(
+    "SUPABASE_ANON_KEY",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+    "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZ2h4eG5udnJicXpkbWJrcHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NTE4ODUsImV4cCI6MjEwMjIyNzg4NX0."
+    "4onnBIv-j8RC0LVIGsGpVCAHeMlSu0qbP1ewyTXJG5A",
+)
+SB_HEADERS = {"apikey": SUPABASE_ANON, "Content-Type": "application/json"}
+
+AUTH = {
+    "en": {
+        "title": "Create an account to use the generator",
+        "sub": "Sign in or register — you get 10 free generations.",
+        "signin": "Sign in", "register": "Register",
+        "email": "Email", "password": "Password", "first": "First name", "last": "Last name",
+        "signin_btn": "Sign in", "register_btn": "Create account",
+        "err_login": "Wrong email or password.",
+        "err_register": "Could not register. Try another email or a stronger password (min 6 characters).",
+        "check_email": "Account created. Please confirm your email, then sign in.",
+        "logout": "Log out", "hi": "Hi, {name}",
+    },
+    "ru": {
+        "title": "Создайте аккаунт, чтобы пользоваться генератором",
+        "sub": "Войдите или зарегистрируйтесь — 10 бесплатных генераций.",
+        "signin": "Вход", "register": "Регистрация",
+        "email": "Email", "password": "Пароль", "first": "Имя", "last": "Фамилия",
+        "signin_btn": "Войти", "register_btn": "Создать аккаунт",
+        "err_login": "Неверная почта или пароль.",
+        "err_register": "Не удалось зарегистрироваться. Другая почта или пароль надёжнее (мин. 6 символов).",
+        "check_email": "Аккаунт создан. Подтвердите почту и войдите.",
+        "logout": "Выйти", "hi": "Привет, {name}",
+    },
+}
+
+def _sb_apply_session(data: dict):
+    user = data.get("user") or data
+    meta = (user.get("user_metadata") or {}) if isinstance(user, dict) else {}
+    st.session_state["sb_token"] = data.get("access_token", "")
+    st.session_state["sb_name"] = meta.get("first_name") or (user.get("email", "") or "").split("@")[0]
+    try:
+        st.session_state["used"] = int(meta.get("used") or 0)
+    except (TypeError, ValueError):
+        st.session_state["used"] = 0
+
+def sb_login(email, password):
+    return requests.post(f"{SUPABASE_URL}/auth/v1/token?grant_type=password",
+                         headers=SB_HEADERS, json={"email": email, "password": password}, timeout=30)
+
+def sb_signup(email, password, first, last):
+    return requests.post(f"{SUPABASE_URL}/auth/v1/signup", headers=SB_HEADERS,
+                         json={"email": email, "password": password,
+                               "data": {"first_name": first, "last_name": last, "used": 0}}, timeout=30)
+
+def sb_set_used(n: int):
+    tok = st.session_state.get("sb_token")
+    if not tok:
+        return
+    try:
+        requests.put(f"{SUPABASE_URL}/auth/v1/user",
+                     headers={**SB_HEADERS, "Authorization": f"Bearer {tok}"},
+                     json={"data": {"used": n}}, timeout=30)
+    except Exception:
+        pass
+
+def render_auth(a):
+    st.markdown(f"<div class='hero'><h1>{a['title']}</h1><p>{a['sub']}</p></div>", unsafe_allow_html=True)
+    tab_in, tab_up = st.tabs([a["signin"], a["register"]])
+    with tab_in:
+        e = st.text_input(a["email"], key="li_e")
+        p = st.text_input(a["password"], type="password", key="li_p")
+        if st.button(a["signin_btn"], type="primary", key="li_btn"):
+            r = sb_login(e.strip(), p)
+            if r.status_code == 200 and r.json().get("access_token"):
+                _sb_apply_session(r.json())
+                st.rerun()
+            else:
+                st.error(a["err_login"])
+    with tab_up:
+        fn = st.text_input(a["first"], key="rg_f")
+        ln = st.text_input(a["last"], key="rg_l")
+        e2 = st.text_input(a["email"], key="rg_e")
+        p2 = st.text_input(a["password"], type="password", key="rg_p")
+        if st.button(a["register_btn"], type="primary", key="rg_btn"):
+            r = sb_signup(e2.strip(), p2, fn.strip(), ln.strip())
+            if r.status_code in (200, 201):
+                data = r.json()
+                if data.get("access_token"):
+                    _sb_apply_session(data)
+                    st.rerun()
+                else:
+                    r2 = sb_login(e2.strip(), p2)
+                    if r2.status_code == 200 and r2.json().get("access_token"):
+                        _sb_apply_session(r2.json())
+                        st.rerun()
+                    else:
+                        st.info(a["check_email"])
+            else:
+                try:
+                    msg = r.json().get("msg") or r.json().get("error_description") or a["err_register"]
+                except Exception:
+                    msg = a["err_register"]
+                st.error(msg)
 
 # ---------- interface (UI) translations ----------
 # UI language = language of the app's own labels/buttons.
@@ -309,9 +413,11 @@ with _b:
     ui_lang_name = st.selectbox("Language", list(UI_LANGS.keys()), label_visibility="collapsed", key="ui_lang")
 t = T[UI_LANGS[ui_lang_name]]
 
-# ---------- public access ----------
-# No password gate: the generator is public so any visitor can use it.
-# Abuse is limited by SESSION_LIMIT (generations per visitor session).
+# ---------- auth gate (Supabase: email + password) ----------
+a = AUTH.get(UI_LANGS[ui_lang_name], AUTH["en"])
+if not st.session_state.get("sb_token"):
+    render_auth(a)
+    st.stop()
 
 # ---------- session usage limit ----------
 if "used" not in st.session_state:
@@ -393,6 +499,16 @@ def generate(prompt: str, image_bytes=None, image_mime=None) -> dict:
 # ---------- UI ----------
 st.markdown(f"<div class='hero'><h1>{t['title']}</h1><p>{t['caption']}</p></div>", unsafe_allow_html=True)
 
+_g1, _g2 = st.columns([3, 1])
+with _g1:
+    st.markdown(f"<div style='padding-top:6px;color:#94a3b8'>{a['hi'].format(name=st.session_state.get('sb_name',''))}</div>",
+                unsafe_allow_html=True)
+with _g2:
+    if st.button(a["logout"], key="logout_btn"):
+        for _k in ("sb_token", "sb_name", "used"):
+            st.session_state.pop(_k, None)
+        st.rerun()
+
 remaining = SESSION_LIMIT - st.session_state["used"]
 st.markdown(f"<div class='usage'>{t['gens_left'].format(n=max(remaining, 0), lim=SESSION_LIMIT)}</div>",
             unsafe_allow_html=True)
@@ -451,6 +567,7 @@ if st.button(t["generate"], type="primary", use_container_width=True):
                     image_mime=(photo.type if photo else None),
                 )
                 st.session_state["used"] += 1
+                sb_set_used(st.session_state["used"])
                 st.success(t["done"])
 
                 st.markdown("<div class='result-card'>", unsafe_allow_html=True)
