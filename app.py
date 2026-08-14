@@ -106,14 +106,9 @@ SUPABASE_ANON = st.secrets.get(
 )
 SB_HEADERS = {"apikey": SUPABASE_ANON, "Content-Type": "application/json"}
 
-# Browser persistence ("remember me"): store the Supabase refresh token in
-# localStorage so users stay signed in across reloads. If the component is
-# unavailable it falls back to session-only (no-op) and never blocks the app.
-try:
-    from streamlit_local_storage import LocalStorage
-    _LS = LocalStorage()
-except Exception:
-    _LS = None
+# Browser persistence ("remember me") is disabled — safe no-op helpers keep the
+# rest of the auth code working within a session (session-only login).
+_LS = None
 
 def _ls_get(k):
     if not _LS:
