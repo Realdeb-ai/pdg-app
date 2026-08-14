@@ -47,12 +47,9 @@ cookies = None
 try:
     import extra_streamlit_components as stx
 
-    @st.cache_resource
-    def _get_cookie_manager():
-        return stx.CookieManager(key="pdg_cookies")
-
-    cookies = _get_cookie_manager()
-    cookies.get_all()  # triggers component mount
+    # NOTE: must NOT be wrapped in st.cache_* — CookieManager runs a widget
+    # command internally, which Streamlit forbids inside cached functions.
+    cookies = stx.CookieManager(key="pdg_cookies")
 except Exception:
     cookies = None
 
