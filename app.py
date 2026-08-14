@@ -92,12 +92,9 @@ SUPABASE_ANON = st.secrets.get(
 )
 SB_HEADERS = {"apikey": SUPABASE_ANON, "Content-Type": "application/json"}
 
-# Browser localStorage so the login is remembered across reloads ("remember me").
-try:
-    from streamlit_local_storage import LocalStorage
-    _LS = LocalStorage()
-except Exception:
-    _LS = None
+# Browser persistence ("remember me") is temporarily disabled — the helpers are
+# safe no-ops so the rest of the auth code keeps working within a session.
+_LS = None
 
 def _ls_get(k):
     if not _LS:
