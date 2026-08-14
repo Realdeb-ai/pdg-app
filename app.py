@@ -42,37 +42,28 @@ footer {display: none !important;}
 a[href*="streamlit.io"], [class*="viewerBadge"] {display: none !important;}
 
 /* Global and App background — unified dark theme, absolutely no cheap white frames or gaps */
-.stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], body {
+.stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], body, [data-testid="stSidebar"] {
     background-color: #0e1117 !important;
 }
 
-/* Ensure the sidebar collapsed control button is perfectly visible and styled */
-[data-testid="stSidebarCollapsedControl"] {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    background-color: #1f2937 !important;
-    border-radius: 8px !important;
-    margin: 10px !important;
+/* Eliminate Streamlit's default silver/gray wrapper and frame gaps */
+[data-testid="stAppViewContainer"], .main .block-container {
+    background-color: #0e1117 !important;
+    border: none !important;
+    padding: 0 !important;
 }
 
-/* Sidebar styling: slim, elegant, no overflow */
+/* Ensure the sidebar container is absolutely gone/hidden so it doesn't take space */
 section[data-testid="stSidebar"] {
-    width: 320px !important;
-    min-width: 320px !important;
-    max-width: 320px !important;
-    background-color: #0d1117 !important;
-    border-right: 1px solid #1f2937 !important;
+    display: none !important;
 }
 
-/* Restrict the main content width to keep it strictly centered and professional, not stretched wide */
+/* Restrict the main content width to keep it strictly centered and professional */
 [data-testid="stMain"] .block-container {
     max-width: 780px !important;
-    padding-left: 20px !important;
-    padding-right: 20px !important;
-    padding-top: 2rem !important;
-    padding-bottom: 3rem !important;
+    padding: 2rem 20px 3rem 20px !important;
     margin: 0 auto !important;
+    background-color: #0e1117 !important;
 }
 
 /* hero header — calm, muted, refined */
