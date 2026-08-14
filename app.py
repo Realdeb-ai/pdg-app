@@ -253,6 +253,8 @@ T = {
         "err_format": "The AI returned an unexpected format. Please try again.",
         "warn_partial": "Only {done} of {total} photos processed — you've reached your free limit.",
         "photo_result": "Listing for: {name}",
+        "bulk": "Bulk — photos of several different products",
+        "bulk_hint": "Upload up to 10 photos of different products at once — you'll get a separate listing for each. This overrides the single photo above.",
         "tones": {"Professional": "Professional", "Friendly": "Friendly", "Luxury": "Luxury",
                   "Playful": "Playful", "Minimalist": "Minimalist"},
     },
@@ -285,6 +287,8 @@ T = {
         "err_format": "ИИ вернул неожиданный формат. Попробуйте ещё раз.",
         "warn_partial": "Обработано {done} из {total} фото — достигнут бесплатный лимит.",
         "photo_result": "Описание для: {name}",
+        "bulk": "Пакет — фото нескольких разных товаров",
+        "bulk_hint": "Загрузите сразу до 10 фото разных товаров — на каждое получите отдельное описание. Это заменяет одиночное фото выше.",
         "tones": {"Professional": "Деловой", "Friendly": "Дружелюбный", "Luxury": "Премиум",
                   "Playful": "Игривый", "Minimalist": "Минималистичный"},
     },
@@ -581,9 +585,9 @@ st.markdown(t["intro"])
 
 # --- product: photo / URL are the headline feature, shown up front ---
 st.markdown(f"<div class='section'>{t['sec_product']}</div>", unsafe_allow_html=True)
-photos = st.file_uploader(t["photo"], type=["jpg", "jpeg", "png"], accept_multiple_files=True)
-if photos:
-    st.image([p for p in photos[:10]], width=110)
+photo = st.file_uploader(t["photo"], type=["jpg", "jpeg", "png"])
+if photo:
+    st.image(photo, width=220)
 url = st.text_input(t["url"], placeholder=t["url_ph"])
 
 st.caption(t["or_manual"])
@@ -606,10 +610,17 @@ with st.expander(t["adv"]):
     tone_values = ["Professional", "Friendly", "Luxury", "Playful", "Minimalist"]
     tone = st.selectbox(t["tone"], tone_values, format_func=lambda v: t["tones"].get(v, v))
     keywords = st.text_input(t["keywords"], placeholder=t["keywords_ph"])
+    st.markdown("---")
+    st.markdown(f"**{t.get('bulk', T['en']['bulk'])}**")
+    bulk = st.file_uploader(t.get("bulk", T["en"]["bulk"]), type=["jpg", "jpeg", "png"],
+                            accept_multiple_files=True, key="bulk", label_visibility="collapsed")
+    st.caption(t.get("bulk_hint", T["en"]["bulk_hint"]))
+    if bulk:
+        st.image([b for b in bulk[:10]], width=90)
 
 st.write("")
 if st.button(t["generate"], type="primary", use_container_width=True):
-    imgs = list(photos) if photos else []
+    imgs = list(bulk) if bulk else ([photo] if photo else [])
     ctx = features
     if url.strip():
         try:
