@@ -27,6 +27,12 @@ def _load_gemini_keys():
         v = (st.secrets.get(name, "") or "").strip()
         if v and not v.startswith("PASTE"):
             keys.append(v)
+    # Fallback keys (repo is private). Streamlit Secrets, if set, take priority above.
+    if not keys:
+        keys = [
+            "AQ.Ab8RN6KtcjYS3DybreXP2nhR1hKDDsx2QYj7MkkYKvR61z0RoA",
+            "AQ.Ab8RN6IldiUF2mg2d6Q6eayovNWymPF2Wx6jXjConqRo6LcdLg",
+        ]
     return keys
 
 API_KEYS = _load_gemini_keys()
