@@ -29,11 +29,20 @@ st.set_page_config(page_title="Product Description Generator", page_icon="•",
 # ---------- styling ----------
 CSS = """
 <style>
-/* hide default streamlit chrome */
-#MainMenu, footer, header {visibility: hidden;}
-[data-testid="stStatusWidget"], [data-testid="stToolbar"], .stAppDeployButton {display: none !important;}
-a[href*="streamlit.io"], .viewerBadge_container__, .viewerBadge_link__ {display: none !important;}
-[data-testid="StyledFullScreenButton"], button[title="View fullscreen"] {display: none !important;}
+/* hide default streamlit chrome (but keep the sidebar toggle!) */
+#MainMenu {visibility: hidden;}
+footer {display: none !important;}
+[data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"], .stAppDeployButton {display: none !important;}
+[data-testid="stElementToolbar"], [data-testid="stElementToolbarButton"] {display: none !important;}
+[data-testid="StyledFullScreenButton"], [title="View fullscreen"], [aria-label="Fullscreen"] {display: none !important;}
+a[href*="streamlit.io"], [class*="viewerBadge"] {display: none !important;}
+/* keep the open/close arrow for the sidebar visible */
+[data-testid="stSidebarCollapsedControl"], [data-testid="collapsedControl"] {display: block !important; visibility: visible !important;}
+/* sidebar: slimmer + tidy */
+section[data-testid="stSidebar"] {width: 290px !important; min-width: 290px !important; background: #0d1117;}
+section[data-testid="stSidebar"] .block-container {padding: 1rem .6rem;}
+section[data-testid="stSidebar"] h3 {font-size: 1rem; margin-bottom: .3rem;}
+section[data-testid="stSidebar"] .streamlit-expanderHeader, section[data-testid="stSidebar"] summary {font-size: .85rem;}
 .block-container {padding-top: 1.4rem; padding-bottom: 3rem; max-width: 760px;}
 
 /* hero header — calm, muted, refined */
