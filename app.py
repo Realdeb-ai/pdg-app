@@ -261,10 +261,11 @@ def sb_set_usage(used, period_start):
 def render_auth(a):
     # Password-recovery step: if we arrived from a reset link, run the hash->query
     # bridge and, once the token is in the query, show a "set new password" form.
-    _recovery_bridge()
-    _rec_at = st.query_params.get("recovery_at")
+    # Cache the recovery access token in session_state: the token_hash is SINGLE-USE,
+    # so we must NOT re-verify it on every rerun (that would fail and drop to login).
+    _rec_at = st.session_state.get("recovery_token") or st.query_params.get("recovery_at")
     # Reliable flow: the reset link carries ?token_hash=...&type=recovery. Exchange
-    # it for a session, then show the set-new-password form.
+    # it for a session once, then keep it for the rest of the flow.
     _th = st.query_params.get("token_hash")
     if not _rec_at and _th and st.query_params.get("type") == "recovery":
         try:
@@ -272,6 +273,7 @@ def render_auth(a):
                                 json={"type": "recovery", "token_hash": _th}, timeout=30)
             if _vr.status_code == 200 and _vr.json().get("access_token"):
                 _rec_at = _vr.json()["access_token"]
+                st.session_state["recovery_token"] = _rec_at
         except Exception:
             pass
     if _rec_at:
@@ -286,6 +288,7 @@ def render_auth(a):
                     _ur = sb_update_password(_rec_at, _np)
                     if _ur.status_code == 200:
                         st.session_state["pw_reset_ok"] = True
+                        st.session_state["recovery_token"] = None
                         st.query_params.clear()
                         st.rerun()
                     else:
