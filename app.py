@@ -92,6 +92,30 @@ SUPABASE_ANON = st.secrets.get(
 )
 SB_HEADERS = {"apikey": SUPABASE_ANON, "Content-Type": "application/json"}
 
+# Browser localStorage so the login is remembered across reloads ("remember me").
+try:
+    from streamlit_local_storage import LocalStorage
+    _LS = LocalStorage()
+except Exception:
+    _LS = None
+
+def _ls_get(k):
+    if not _LS:
+        return None
+    try:
+        v = _LS.getItem(k)
+        return v or None
+    except Exception:
+        return None
+
+def _ls_set(k, v):
+    if not _LS:
+        return
+    try:
+        _LS.setItem(k, v, key=f"lsset_{k}")
+    except Exception:
+        pass
+
 AUTH = {
     "en": {
         "title": "Create an account to use the generator",
@@ -126,6 +150,14 @@ def _sb_apply_session(data: dict):
         st.session_state["used"] = int(meta.get("used") or 0)
     except (TypeError, ValueError):
         st.session_state["used"] = 0
+    rt = data.get("refresh_token")
+    if rt:
+        st.session_state["sb_rt"] = rt
+        _ls_set("sb_rt", rt)
+
+def sb_refresh(rt):
+    return requests.post(f"{SUPABASE_URL}/auth/v1/token?grant_type=refresh_token",
+                         headers=SB_HEADERS, json={"refresh_token": rt}, timeout=30)
 
 def sb_login(email, password):
     return requests.post(f"{SUPABASE_URL}/auth/v1/token?grant_type=password",
@@ -222,6 +254,8 @@ T = {
         "warn_input": "Give me something to work with: a product name, a photo, or a URL.",
         "warn_url": "Couldn't read that URL — using the other fields.",
         "err_format": "The AI returned an unexpected format. Please try again.",
+        "warn_partial": "Only {done} of {total} photos processed — you've reached your free limit.",
+        "photo_result": "Listing for: {name}",
         "tones": {"Professional": "Professional", "Friendly": "Friendly", "Luxury": "Luxury",
                   "Playful": "Playful", "Minimalist": "Minimalist"},
     },
@@ -252,6 +286,8 @@ T = {
         "warn_input": "Дайте с чем работать: название товара, фото или ссылку.",
         "warn_url": "Не удалось прочитать эту ссылку — использую остальные поля.",
         "err_format": "ИИ вернул неожиданный формат. Попробуйте ещё раз.",
+        "warn_partial": "Обработано {done} из {total} фото — достигнут бесплатный лимит.",
+        "photo_result": "Описание для: {name}",
         "tones": {"Professional": "Деловой", "Friendly": "Дружелюбный", "Luxury": "Премиум",
                   "Playful": "Игривый", "Minimalist": "Минималистичный"},
     },
@@ -415,6 +451,18 @@ t = T[UI_LANGS[ui_lang_name]]
 
 # ---------- auth gate (Supabase: email + password) ----------
 a = AUTH.get(UI_LANGS[ui_lang_name], AUTH["en"])
+
+# Remember me: restore a saved session from the browser before showing the login screen.
+if not st.session_state.get("sb_token"):
+    _rt = st.session_state.get("sb_rt") or _ls_get("sb_rt")
+    if _rt:
+        try:
+            _rr = sb_refresh(_rt)
+            if _rr.status_code == 200 and _rr.json().get("access_token"):
+                _sb_apply_session(_rr.json())
+        except Exception:
+            pass
+
 if not st.session_state.get("sb_token"):
     render_auth(a)
     st.stop()
@@ -496,6 +544,25 @@ def generate(prompt: str, image_bytes=None, image_mime=None) -> dict:
     text = data["candidates"][0]["content"]["parts"][0]["text"]
     return json.loads(text)
 
+def render_result(out, t, dl_key, label=""):
+    if label:
+        st.markdown(f"**{t.get('photo_result', T['en']['photo_result']).format(name=label)}**")
+    st.markdown("<div class='result-card'>", unsafe_allow_html=True)
+    st.subheader(t["h_title"])
+    st.code(out.get("seo_title", ""), language=None)
+    st.subheader(t["h_desc"])
+    st.write(out.get("description", ""))
+    st.subheader(t["h_bullets"])
+    for b in out.get("bullet_points", []):
+        st.markdown(f"- {b}")
+    st.subheader(t["h_tags"])
+    st.code(", ".join(out.get("tags", [])), language=None)
+    st.subheader(t["h_meta"])
+    st.code(out.get("meta_description", ""), language=None)
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.download_button(t["download"], data=json.dumps(out, ensure_ascii=False, indent=2),
+                       file_name="listing.json", mime="application/json", key=dl_key)
+
 # ---------- UI ----------
 st.markdown(f"<div class='hero'><h1>{t['title']}</h1><p>{t['caption']}</p></div>", unsafe_allow_html=True)
 
@@ -505,8 +572,9 @@ with _g1:
                 unsafe_allow_html=True)
 with _g2:
     if st.button(a["logout"], key="logout_btn"):
-        for _k in ("sb_token", "sb_name", "used"):
+        for _k in ("sb_token", "sb_name", "used", "sb_rt"):
             st.session_state.pop(_k, None)
+        _ls_set("sb_rt", "")
         st.rerun()
 
 remaining = SESSION_LIMIT - st.session_state["used"]
@@ -516,9 +584,9 @@ st.markdown(t["intro"])
 
 # --- product: photo / URL are the headline feature, shown up front ---
 st.markdown(f"<div class='section'>{t['sec_product']}</div>", unsafe_allow_html=True)
-photo = st.file_uploader(t["photo"], type=["jpg", "jpeg", "png"])
-if photo:
-    st.image(photo, width=220)
+photos = st.file_uploader(t["photo"], type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+if photos:
+    st.image([p for p in photos[:10]], width=110)
 url = st.text_input(t["url"], placeholder=t["url_ph"])
 
 st.caption(t["or_manual"])
@@ -544,7 +612,7 @@ with st.expander(t["adv"]):
 
 st.write("")
 if st.button(t["generate"], type="primary", use_container_width=True):
-    img_bytes = photo.getvalue() if photo else None
+    imgs = list(photos) if photos else []
     ctx = features
     if url.strip():
         try:
@@ -555,43 +623,32 @@ if st.button(t["generate"], type="primary", use_container_width=True):
         st.error(t["err_nokey"])
     elif remaining <= 0:
         st.error(t["err_limit"])
-    elif not img_bytes and not ctx.strip() and not name.strip():
+    elif not imgs and not ctx.strip() and not name.strip():
         st.warning(t["warn_input"])
     else:
-        with st.spinner(t["spinner"]):
-            try:
-                out = generate(
-                    build_prompt(name, ctx, category, marketplace, tone, keywords,
-                                 has_image=bool(img_bytes), language=language),
-                    image_bytes=img_bytes,
-                    image_mime=(photo.type if photo else None),
-                )
-                st.session_state["used"] += 1
-                sb_set_used(st.session_state["used"])
-                st.success(t["done"])
-
-                st.markdown("<div class='result-card'>", unsafe_allow_html=True)
-                st.subheader(t["h_title"])
-                st.code(out.get("seo_title", ""), language=None)
-
-                st.subheader(t["h_desc"])
-                st.write(out.get("description", ""))
-
-                st.subheader(t["h_bullets"])
-                for b in out.get("bullet_points", []):
-                    st.markdown(f"- {b}")
-
-                st.subheader(t["h_tags"])
-                st.code(", ".join(out.get("tags", [])), language=None)
-
-                st.subheader(t["h_meta"])
-                st.code(out.get("meta_description", ""), language=None)
-                st.markdown("</div>", unsafe_allow_html=True)
-
-                st.download_button(t["download"],
-                                   data=json.dumps(out, ensure_ascii=False, indent=2),
-                                   file_name="listing.json", mime="application/json")
-            except json.JSONDecodeError:
-                st.error(t["err_format"])
-            except Exception as e:
-                st.error(str(e))
+        # One generation per photo (up to the remaining free limit); or a single text/URL job.
+        if imgs:
+            jobs = imgs[:remaining]
+            if len(imgs) > remaining:
+                st.warning(t.get("warn_partial", T["en"]["warn_partial"]).format(done=remaining, total=len(imgs)))
+        else:
+            jobs = [None]
+        st.success(t["done"])
+        for idx, ph in enumerate(jobs, start=1):
+            img_bytes = ph.getvalue() if ph else None
+            img_mime = ph.type if ph else None
+            label = ph.name if ph else ""
+            with st.spinner(t["spinner"]):
+                try:
+                    out = generate(
+                        build_prompt(name, ctx, category, marketplace, tone, keywords,
+                                     has_image=bool(img_bytes), language=language),
+                        image_bytes=img_bytes, image_mime=img_mime,
+                    )
+                    st.session_state["used"] += 1
+                    sb_set_used(st.session_state["used"])
+                    render_result(out, t, dl_key=f"dl_{idx}", label=label)
+                except json.JSONDecodeError:
+                    st.error(t["err_format"])
+                except Exception as e:
+                    st.error(str(e))
