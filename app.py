@@ -205,11 +205,17 @@ def sb_signup(email, password, first, last):
                          json={"email": email, "password": password,
                                "data": {"first_name": first, "last_name": last, "used": 0}}, timeout=30)
 
+# Public URL of THIS Streamlit app — the reset link must land here (not the
+# marketing wrapper page) so the in-app "set new password" form can run.
+APP_PUBLIC_URL = "https://pdg-app-gz6vrgsebbhha2schirhtx.streamlit.app"
+
 def sb_recover(email):
-    # Sends a Supabase password-reset email. Returns 200 regardless of whether the
+    # Sends a Supabase password-reset email. redirect_to sends the user back to
+    # this app after clicking the link. Returns 200 regardless of whether the
     # email exists (anti-enumeration), so we always show the same neutral message.
-    return requests.post(f"{SUPABASE_URL}/auth/v1/recover", headers=SB_HEADERS,
-                         json={"email": email}, timeout=30)
+    return requests.post(f"{SUPABASE_URL}/auth/v1/recover",
+                         params={"redirect_to": APP_PUBLIC_URL},
+                         headers=SB_HEADERS, json={"email": email}, timeout=30)
 
 def sb_update_password(access_token, new_password):
     # Uses the short-lived recovery access_token from the reset link to set a new password.
