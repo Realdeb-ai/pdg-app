@@ -12,6 +12,7 @@ Secrets (Streamlit Cloud -> App -> Settings -> Secrets):
 """
 
 import json
+import time
 import streamlit as st
 import requests
 
@@ -131,6 +132,7 @@ AUTH = {
         "logout": "Log out", "hi": "Hi, {name}",
         "account": "Account", "history_title": "Your listings", "clear": "Clear listings",
         "history_empty": "Your generated listings will appear here.",
+        "resets_in": "· free generations reset in {h}h {m}m",
     },
     "ru": {
         "title": "Создайте аккаунт, чтобы пользоваться генератором",
@@ -144,6 +146,7 @@ AUTH = {
         "logout": "Выйти", "hi": "Привет, {name}",
         "account": "Аккаунт", "history_title": "Ваши описания", "clear": "Очистить описания",
         "history_empty": "Здесь появятся сгенерированные описания.",
+        "resets_in": "· бесплатные обновятся через {h}ч {m}м",
     },
 }
 
@@ -156,6 +159,10 @@ def _sb_apply_session(data: dict):
         st.session_state["used"] = int(meta.get("used") or 0)
     except (TypeError, ValueError):
         st.session_state["used"] = 0
+    try:
+        st.session_state["period_start"] = float(meta.get("period_start") or 0)
+    except (TypeError, ValueError):
+        st.session_state["period_start"] = 0.0
     rt = data.get("refresh_token")
     if rt:
         st.session_state["sb_rt"] = rt
@@ -174,14 +181,14 @@ def sb_signup(email, password, first, last):
                          json={"email": email, "password": password,
                                "data": {"first_name": first, "last_name": last, "used": 0}}, timeout=30)
 
-def sb_set_used(n: int):
+def sb_set_usage(used, period_start):
     tok = st.session_state.get("sb_token")
     if not tok:
         return
     try:
         requests.put(f"{SUPABASE_URL}/auth/v1/user",
                      headers={**SB_HEADERS, "Authorization": f"Bearer {tok}"},
-                     json={"data": {"used": n}}, timeout=30)
+                     json={"data": {"used": used, "period_start": period_start}}, timeout=30)
     except Exception:
         pass
 
@@ -481,6 +488,17 @@ if not st.session_state.get("sb_token"):
 if "used" not in st.session_state:
     st.session_state["used"] = 0
 
+# 24-hour rolling free quota: reset the counter once 24h pass since the period start.
+_now = time.time()
+_ps = st.session_state.get("period_start") or 0
+if not _ps:
+    st.session_state["period_start"] = _now
+    sb_set_usage(st.session_state.get("used", 0), _now)
+elif _now - _ps >= 86400:
+    st.session_state["used"] = 0
+    st.session_state["period_start"] = _now
+    sb_set_usage(0, _now)
+
 # ---------- prompt builder ----------
 MARKET_HINTS = {
     "Shopify": "Direct-to-consumer store. Persuasive, brand-driven, benefit-led copy. Description ~120-180 words.",
@@ -607,8 +625,12 @@ with _g2:
         st.rerun()
 
 remaining = SESSION_LIMIT - st.session_state["used"]
-st.markdown(f"<div class='usage'>{t['gens_left'].format(n=max(remaining, 0), lim=SESSION_LIMIT)}</div>",
-            unsafe_allow_html=True)
+_next_reset = (st.session_state.get("period_start") or time.time()) + 86400
+_secs_left = max(0, int(_next_reset - time.time()))
+_rh, _rm = _secs_left // 3600, (_secs_left % 3600) // 60
+_usage_txt = t["gens_left"].format(n=max(remaining, 0), lim=SESSION_LIMIT)
+_usage_txt += " " + a.get("resets_in", "· resets in {h}h {m}m").format(h=_rh, m=_rm)
+st.markdown(f"<div class='usage'>{_usage_txt}</div>", unsafe_allow_html=True)
 st.markdown(t["intro"])
 
 # --- product: photo / URL are the headline feature, shown up front ---
@@ -682,7 +704,7 @@ if st.button(t["generate"], type="primary", use_container_width=True):
                         image_bytes=img_bytes, image_mime=img_mime,
                     )
                     st.session_state["used"] += 1
-                    sb_set_used(st.session_state["used"])
+                    sb_set_usage(st.session_state["used"], st.session_state.get("period_start") or time.time())
                     st.session_state["history"].insert(0, {"label": label, "out": out})
                 except json.JSONDecodeError:
                     st.error(t["err_format"])
