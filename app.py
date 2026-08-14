@@ -263,6 +263,17 @@ def render_auth(a):
     # bridge and, once the token is in the query, show a "set new password" form.
     _recovery_bridge()
     _rec_at = st.query_params.get("recovery_at")
+    # Reliable flow: the reset link carries ?token_hash=...&type=recovery. Exchange
+    # it for a session, then show the set-new-password form.
+    _th = st.query_params.get("token_hash")
+    if not _rec_at and _th and st.query_params.get("type") == "recovery":
+        try:
+            _vr = requests.post(f"{SUPABASE_URL}/auth/v1/verify", headers=SB_HEADERS,
+                                json={"type": "recovery", "token_hash": _th}, timeout=30)
+            if _vr.status_code == 200 and _vr.json().get("access_token"):
+                _rec_at = _vr.json()["access_token"]
+        except Exception:
+            pass
     if _rec_at:
         st.markdown(f"<div class='hero'><h1>{a.get('set_new_pw', 'Set a new password')}</h1></div>",
                     unsafe_allow_html=True)
