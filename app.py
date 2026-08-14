@@ -524,8 +524,10 @@ def fetch_url_text(url: str) -> str:
     return re.sub(r"\s+", " ", text).strip()[:6000]
 
 
+GEN_MODELS = [MODEL, "gemini-3.1-flash-lite", "gemini-3-flash-preview"]
+
 def generate(prompt: str, image_bytes=None, image_mime=None) -> dict:
-    import base64
+    import base64, time
     parts = [{"text": prompt}]
     if image_bytes:
         parts.append({"inline_data": {
@@ -536,14 +538,28 @@ def generate(prompt: str, image_bytes=None, image_mime=None) -> dict:
         "contents": [{"parts": parts}],
         "generationConfig": {"responseMimeType": "application/json", "temperature": 0.8},
     }
-    r = requests.post(API_URL, params={"key": API_KEY}, json=body, timeout=60)
-    if r.status_code == 429:
-        raise RuntimeError("The AI is rate-limited right now. Please wait a minute and try again.")
-    if r.status_code != 200:
-        raise RuntimeError(f"API error {r.status_code}: {r.text[:200]}")
-    data = r.json()
-    text = data["candidates"][0]["content"]["parts"][0]["text"]
-    return json.loads(text)
+    # Try each model with a couple of retries; fall back on overload/transient errors.
+    for m in GEN_MODELS:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent"
+        for attempt in range(3):
+            try:
+                r = requests.post(url, params={"key": API_KEY}, json=body, timeout=60)
+            except Exception:
+                time.sleep(1.2 * (attempt + 1))
+                continue
+            if r.status_code == 200:
+                try:
+                    data = r.json()
+                    text = data["candidates"][0]["content"]["parts"][0]["text"]
+                    return json.loads(text)
+                except Exception:
+                    time.sleep(1.0)
+                    continue  # bad/partial response — retry
+            if r.status_code in (429, 500, 502, 503):
+                time.sleep(1.5 * (attempt + 1))  # overloaded/rate-limited — back off and retry
+                continue
+            raise RuntimeError(f"API error {r.status_code}: {r.text[:200]}")
+    raise RuntimeError("The AI is very busy right now (high demand). Please try again in a minute.")
 
 def render_result(out, t, dl_key, label=""):
     if label:
