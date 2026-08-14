@@ -24,7 +24,8 @@ MODEL = st.secrets.get("GEMINI_MODEL", "gemini-3.5-flash")
 SESSION_LIMIT = min(int(st.secrets.get("SESSION_LIMIT", "10")), 10)
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
-st.set_page_config(page_title="Product Description Generator", page_icon="•", layout="centered")
+st.set_page_config(page_title="Product Description Generator", page_icon="•",
+                   layout="centered", initial_sidebar_state="collapsed")
 
 # ---------- styling ----------
 CSS = """
@@ -37,6 +38,13 @@ footer {display: none !important;}
 [data-testid="StyledFullScreenButton"], [title="View fullscreen"], [aria-label="Fullscreen"] {display: none !important;}
 a[href*="streamlit.io"], [class*="viewerBadge"] {display: none !important;}
 .block-container {padding-top: 1.2rem; padding-bottom: 3rem; max-width: 760px;}
+/* dark app background — removes the cheap white frame */
+.stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], body {background: #0e1117 !important;}
+/* left panel: keep the open arrow visible; slim + tidy */
+[data-testid="stSidebarCollapsedControl"] {display: flex !important; visibility: visible !important; opacity: 1 !important;}
+section[data-testid="stSidebar"] {width: 300px !important; min-width: 300px !important; background: #0d1117;}
+section[data-testid="stSidebar"] .block-container {padding: 1rem .7rem;}
+section[data-testid="stSidebar"] h3 {font-size: 1rem;}
 
 /* hero header — calm, muted, refined */
 .hero {
@@ -551,7 +559,7 @@ def fetch_url_text(url: str) -> str:
     return re.sub(r"\s+", " ", text).strip()[:6000]
 
 
-GEN_MODELS = [MODEL, "gemini-3.1-flash-lite", "gemini-3-flash-preview"]
+GEN_MODELS = [MODEL, "gemini-3-flash-preview", "gemini-3.1-flash-lite"]
 
 def generate(prompt: str, image_bytes=None, image_mime=None) -> dict:
     import base64, time
@@ -612,6 +620,25 @@ st.markdown(f"<div class='hero'><h1>{t['title']}</h1><p>{t['caption']}</p></div>
 
 if "history" not in st.session_state:
     st.session_state["history"] = []
+
+# ---------- left panel (opens via the arrow top-left): saved listings ----------
+with st.sidebar:
+    st.markdown(f"### {a.get('history_title', 'Your listings')}")
+    if st.session_state["history"]:
+        if st.button(a.get("clear", "Clear"), key="clear_hist", use_container_width=True):
+            st.session_state["history"] = []
+            st.rerun()
+        for _i, _it in enumerate(st.session_state["history"]):
+            _ttl = _it.get("label") or (_it["out"].get("seo_title", "") or "")[:38]
+            with st.expander(_ttl or f"#{_i + 1}"):
+                st.code(_it["out"].get("seo_title", ""), language=None)
+                st.write(_it["out"].get("description", ""))
+                for _b in _it["out"].get("bullet_points", []):
+                    st.markdown(f"- {_b}")
+                st.code(", ".join(_it["out"].get("tags", [])), language=None)
+                st.code(_it["out"].get("meta_description", ""), language=None)
+    else:
+        st.caption(a.get("history_empty", ""))
 
 _g1, _g2 = st.columns([3, 1])
 with _g1:
@@ -706,20 +733,8 @@ if st.button(t["generate"], type="primary", use_container_width=True):
                     st.session_state["used"] += 1
                     sb_set_usage(st.session_state["used"], st.session_state.get("period_start") or time.time())
                     st.session_state["history"].insert(0, {"label": label, "out": out})
+                    render_result(out, t, dl_key=f"dl_{idx}", label=label)
                 except json.JSONDecodeError:
                     st.error(t["err_format"])
                 except Exception as e:
                     st.error(str(e))
-
-# ---------- saved listings (persist across reruns / language switches) ----------
-if st.session_state.get("history"):
-    st.divider()
-    _h1, _h2 = st.columns([3, 1])
-    with _h1:
-        st.markdown(f"<div class='section'>{a.get('history_title', 'Your listings')}</div>", unsafe_allow_html=True)
-    with _h2:
-        if st.button(a.get("clear", "Clear"), key="clear_hist", use_container_width=True):
-            st.session_state["history"] = []
-            st.rerun()
-    for _i, _it in enumerate(st.session_state["history"]):
-        render_result(_it["out"], t, dl_key=f"hist_{_i}", label=_it.get("label", ""))
