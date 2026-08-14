@@ -17,7 +17,20 @@ import streamlit as st
 import requests
 
 # ---------- config ----------
-API_KEY = st.secrets.get("GEMINI_API_KEY", "")
+def _load_gemini_keys():
+    """Collect all Gemini API keys from secrets: GEMINI_API_KEY, GEMINI_API_KEY_2, _3...
+    Multiple keys = load-balancing across users + automatic failover when one hits
+    its free-tier limit. Put each key on a separate Google account/project so the
+    free quotas actually add up."""
+    keys = []
+    for name in ("GEMINI_API_KEY", "GEMINI_API_KEY_2", "GEMINI_API_KEY_3", "GEMINI_API_KEY_4"):
+        v = (st.secrets.get(name, "") or "").strip()
+        if v and not v.startswith("PASTE"):
+            keys.append(v)
+    return keys
+
+API_KEYS = _load_gemini_keys()
+API_KEY = API_KEYS[0] if API_KEYS else ""  # used only for the "is any key configured?" check
 APP_PASSWORD = st.secrets.get("APP_PASSWORD", "")
 MODEL = st.secrets.get("GEMINI_MODEL", "gemini-3.5-flash")
 # Free tier: 10 generations per visitor session (will become per-account after auth).
@@ -670,10 +683,15 @@ def fetch_url_text(url: str) -> str:
     return re.sub(r"\s+", " ", text).strip()[:6000]
 
 
-GEN_MODELS = [MODEL, "gemini-3-flash-preview", "gemini-3.1-flash-lite"]
+# Known-good fallbacks are appended so generation still works even if a preview
+# model name changes.
+GEN_MODELS = [MODEL, "gemini-3-flash-preview", "gemini-3.1-flash-lite",
+              "gemini-2.0-flash", "gemini-1.5-flash"]
+# De-dupe while preserving order.
+GEN_MODELS = list(dict.fromkeys([m for m in GEN_MODELS if m]))
 
 def generate(prompt: str, image_bytes=None, image_mime=None) -> dict:
-    import base64, time
+    import base64, time, random
     parts = [{"text": prompt}]
     if image_bytes:
         parts.append({"inline_data": {
@@ -684,27 +702,43 @@ def generate(prompt: str, image_bytes=None, image_mime=None) -> dict:
         "contents": [{"parts": parts}],
         "generationConfig": {"responseMimeType": "application/json", "temperature": 0.8},
     }
-    # Try each model with a couple of retries; fall back on overload/transient errors.
-    for m in GEN_MODELS:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent"
-        for attempt in range(3):
-            try:
-                r = requests.post(url, params={"key": API_KEY}, json=body, timeout=60)
-            except Exception:
-                time.sleep(1.2 * (attempt + 1))
-                continue
-            if r.status_code == 200:
+    # Load-balance across all configured keys (random start), and fail over to the
+    # next key when one is rate-limited / quota-exhausted (429).
+    keys = [k for k in (API_KEYS or [API_KEY]) if k]
+    random.shuffle(keys)
+    last_err = "no api key"
+    for key in keys:
+        switch_key = False
+        for m in GEN_MODELS:
+            if switch_key:
+                break
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent"
+            for attempt in range(2):
                 try:
-                    data = r.json()
-                    text = data["candidates"][0]["content"]["parts"][0]["text"]
-                    return json.loads(text)
-                except Exception:
-                    time.sleep(1.0)
-                    continue  # bad/partial response — retry
-            if r.status_code in (429, 500, 502, 503):
-                time.sleep(1.5 * (attempt + 1))  # overloaded/rate-limited — back off and retry
-                continue
-            raise RuntimeError(f"API error {r.status_code}: {r.text[:200]}")
+                    r = requests.post(url, params={"key": key}, json=body, timeout=60)
+                except Exception as e:
+                    last_err = str(e)
+                    time.sleep(1.0 * (attempt + 1))
+                    continue
+                if r.status_code == 200:
+                    try:
+                        data = r.json()
+                        text = data["candidates"][0]["content"]["parts"][0]["text"]
+                        return json.loads(text)
+                    except Exception:
+                        last_err = "unexpected response format"
+                        time.sleep(0.8)
+                        continue  # bad/partial response — retry
+                if r.status_code == 429:
+                    last_err = f"429: {r.text[:120]}"
+                    switch_key = True  # this key is exhausted → try the next key
+                    break
+                if r.status_code in (500, 502, 503):
+                    last_err = f"{r.status_code}"
+                    time.sleep(1.2 * (attempt + 1))  # transient overload — retry
+                    continue
+                last_err = f"API {r.status_code}: {r.text[:120]}"
+                break  # e.g. unknown model — try the next model
     raise RuntimeError("The AI is very busy right now (high demand). Please try again in a minute.")
 
 def render_result(out, t, dl_key, label=""):
