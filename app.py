@@ -42,7 +42,9 @@ a[href*="streamlit.io"], [class*="viewerBadge"] {display: none !important;}
 .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], body {background: #0e1117 !important;}
 /* left panel: keep the open arrow visible; slim + tidy */
 [data-testid="stSidebarCollapsedControl"] {display: flex !important; visibility: visible !important; opacity: 1 !important;}
-section[data-testid="stSidebar"] {width: 300px !important; min-width: 300px !important; background: #0d1117;}
+/* Only size the sidebar when it's actually open; collapsed = full width for centered content */
+section[data-testid="stSidebar"] {background: #0d1117;}
+section[data-testid="stSidebar"][aria-expanded="true"] {width: 300px !important; min-width: 300px !important;}
 section[data-testid="stSidebar"] .block-container {padding: 1rem .7rem;}
 section[data-testid="stSidebar"] h3 {font-size: 1rem;}
 
