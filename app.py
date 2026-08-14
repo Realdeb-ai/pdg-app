@@ -37,7 +37,7 @@ footer {display: none !important;}
 [data-testid="stElementToolbar"], [data-testid="stElementToolbarButton"] {display: none !important;}
 [data-testid="StyledFullScreenButton"], [title="View fullscreen"], [aria-label="Fullscreen"] {display: none !important;}
 a[href*="streamlit.io"], [class*="viewerBadge"] {display: none !important;}
-.block-container {padding-top: 1.2rem; padding-bottom: 3rem; max-width: 760px; margin-left: auto !important; margin-right: auto !important;}
+.block-container, [data-testid="stMainBlockContainer"], [data-testid="stMain"] .block-container {padding-top: 1.2rem; padding-bottom: 3rem; max-width: 760px !important; margin-left: auto !important; margin-right: auto !important;}
 /* dark app background — removes the cheap white frame */
 .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], body {background: #0e1117 !important;}
 /* left panel: keep the open arrow visible; slim + tidy */
@@ -106,9 +106,14 @@ SUPABASE_ANON = st.secrets.get(
 )
 SB_HEADERS = {"apikey": SUPABASE_ANON, "Content-Type": "application/json"}
 
-# Browser persistence ("remember me") is temporarily disabled — the helpers are
-# safe no-ops so the rest of the auth code keeps working within a session.
-_LS = None
+# Browser persistence ("remember me"): store the Supabase refresh token in
+# localStorage so users stay signed in across reloads. If the component is
+# unavailable it falls back to session-only (no-op) and never blocks the app.
+try:
+    from streamlit_local_storage import LocalStorage
+    _LS = LocalStorage()
+except Exception:
+    _LS = None
 
 def _ls_get(k):
     if not _LS:
