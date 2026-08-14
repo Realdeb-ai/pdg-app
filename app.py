@@ -11,6 +11,7 @@ Secrets (Streamlit Cloud -> App -> Settings -> Secrets):
     SESSION_LIMIT  = "5"                   # optional, generations per visitor session (hard-capped at 5)
 """
 
+import html
 import json
 import time
 import streamlit as st
@@ -24,8 +25,10 @@ MODEL = st.secrets.get("GEMINI_MODEL", "gemini-3.5-flash")
 SESSION_LIMIT = min(int(st.secrets.get("SESSION_LIMIT", "10")), 10)
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
+# We must use layout="wide" for the layout to not overlap the sidebar with the centered content,
+# and we will restrict the center container via CSS to keep the main app neat and centered.
 st.set_page_config(page_title="Product Description Generator", page_icon="•",
-                   layout="centered", initial_sidebar_state="collapsed")
+                   layout="wide", initial_sidebar_state="collapsed")
 
 # ---------- styling ----------
 CSS = """
@@ -37,14 +40,40 @@ footer {display: none !important;}
 [data-testid="stElementToolbar"], [data-testid="stElementToolbarButton"] {display: none !important;}
 [data-testid="StyledFullScreenButton"], [title="View fullscreen"], [aria-label="Fullscreen"] {display: none !important;}
 a[href*="streamlit.io"], [class*="viewerBadge"] {display: none !important;}
-.block-container {padding-top: 1.2rem; padding-bottom: 3rem; max-width: 760px;}
-/* dark app background — removes the cheap white frame */
-.stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], body {background: #0e1117 !important;}
-/* left panel: keep the open arrow visible; slim + tidy */
-[data-testid="stSidebarCollapsedControl"] {display: flex !important; visibility: visible !important; opacity: 1 !important;}
-section[data-testid="stSidebar"] {width: 300px !important; min-width: 300px !important; background: #0d1117;}
-section[data-testid="stSidebar"] .block-container {padding: 1rem .7rem;}
-section[data-testid="stSidebar"] h3 {font-size: 1rem;}
+
+/* Global and App background — unified dark theme, absolutely no cheap white frames or gaps */
+.stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], body {
+    background-color: #0e1117 !important;
+}
+
+/* Ensure the sidebar collapsed control button is perfectly visible and styled */
+[data-testid="stSidebarCollapsedControl"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background-color: #1f2937 !important;
+    border-radius: 8px !important;
+    margin: 10px !important;
+}
+
+/* Sidebar styling: slim, elegant, no overflow */
+section[data-testid="stSidebar"] {
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: 320px !important;
+    background-color: #0d1117 !important;
+    border-right: 1px solid #1f2937 !important;
+}
+
+/* Restrict the main content width to keep it strictly centered and professional, not stretched wide */
+[data-testid="stMain"] .block-container {
+    max-width: 780px !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+    padding-top: 2rem !important;
+    padding-bottom: 3rem !important;
+    margin: 0 auto !important;
+}
 
 /* hero header — calm, muted, refined */
 .hero {
@@ -201,6 +230,8 @@ def sb_set_usage(used, period_start):
         pass
 
 def render_auth(a):
+    # Centering the login container
+    st.markdown("<div style='max-width: 500px; margin: 40px auto 0 auto;'>", unsafe_allow_html=True)
     st.markdown(f"<div class='hero'><h1>{a['title']}</h1><p>{a['sub']}</p></div>", unsafe_allow_html=True)
     tab_in, tab_up = st.tabs([a["signin"], a["register"]])
     with tab_in:
@@ -238,6 +269,7 @@ def render_auth(a):
                 except Exception:
                     msg = a["err_register"]
                 st.error(msg)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ---------- interface (UI) translations ----------
 # UI language = language of the app's own labels/buttons.
@@ -446,7 +478,7 @@ T = {
         "gens_left": "Gerações restantes nesta sessão: {n} / {lim}",
         "sec_product": "Seu produto", "sec_settings": "Configurações",
         "product_name": "Nome do produto", "product_name_ph": "ex. Caneca de café de cerâmica feita à mão",
-        "features": "Características / detalhes principais", "features_ph": "Material, tamanho, cor, benefícios, o que o torna especial...",
+        "features": "Características / detalhes principais", "features_ph": "Material, tamanho, colro, benefícios, o que o torna especial...",
         "marketplace": "Marketplace", "out_lang": "Idioma do resultado",
         "adv": "Mais opções (opcional)",
         "category": "Categoria", "category_ph": "ex. Cozinha e sala de jantar",
