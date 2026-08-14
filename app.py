@@ -141,6 +141,9 @@ AUTH = {
         "account": "Account", "history_title": "Your listings", "clear": "Clear listings",
         "history_empty": "Your generated listings will appear here.",
         "resets_in": "· free generations reset in {h}h {m}m",
+        "forgot": "Forgot your password?",
+        "recover_btn": "Send reset link",
+        "recover_sent": "If an account exists for that email, a password-reset link has been sent. Check your inbox (and spam).",
     },
     "ru": {
         "title": "Создайте аккаунт, чтобы пользоваться генератором",
@@ -155,6 +158,9 @@ AUTH = {
         "account": "Аккаунт", "history_title": "Ваши описания", "clear": "Очистить описания",
         "history_empty": "Здесь появятся сгенерированные описания.",
         "resets_in": "· бесплатные обновятся через {h}ч {m}м",
+        "forgot": "Забыли пароль?",
+        "recover_btn": "Отправить ссылку для сброса",
+        "recover_sent": "Если аккаунт с такой почтой существует, письмо со ссылкой для сброса пароля отправлено. Проверьте почту (и спам).",
     },
 }
 
@@ -189,6 +195,12 @@ def sb_signup(email, password, first, last):
                          json={"email": email, "password": password,
                                "data": {"first_name": first, "last_name": last, "used": 0}}, timeout=30)
 
+def sb_recover(email):
+    # Sends a Supabase password-reset email. Returns 200 regardless of whether the
+    # email exists (anti-enumeration), so we always show the same neutral message.
+    return requests.post(f"{SUPABASE_URL}/auth/v1/recover", headers=SB_HEADERS,
+                         json={"email": email}, timeout=30)
+
 def sb_set_usage(used, period_start):
     tok = st.session_state.get("sb_token")
     if not tok:
@@ -213,6 +225,17 @@ def render_auth(a):
                 st.rerun()
             else:
                 st.error(a["err_login"])
+        with st.expander(a.get("forgot", "Forgot your password?")):
+            re_ = st.text_input(a["email"], key="rec_e")
+            if st.button(a.get("recover_btn", "Send reset link"), key="rec_btn"):
+                if re_ and "@" in re_:
+                    try:
+                        sb_recover(re_.strip())
+                    except Exception:
+                        pass
+                    st.success(a.get("recover_sent", "If an account exists for that email, a reset link has been sent."))
+                else:
+                    st.warning(a["email"])
     with tab_up:
         fn = st.text_input(a["first"], key="rg_f")
         ln = st.text_input(a["last"], key="rg_l")
