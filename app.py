@@ -37,7 +37,7 @@ footer {display: none !important;}
 [data-testid="stElementToolbar"], [data-testid="stElementToolbarButton"] {display: none !important;}
 [data-testid="StyledFullScreenButton"], [title="View fullscreen"], [aria-label="Fullscreen"] {display: none !important;}
 a[href*="streamlit.io"], [class*="viewerBadge"] {display: none !important;}
-.block-container {padding-top: 1.2rem; padding-bottom: 3rem; max-width: 760px;}
+.block-container {padding-top: 1.2rem; padding-bottom: 3rem; max-width: 760px; margin-left: auto !important; margin-right: auto !important;}
 /* dark app background — removes the cheap white frame */
 .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], body {background: #0e1117 !important;}
 /* left panel: keep the open arrow visible; slim + tidy */
