@@ -32,7 +32,7 @@ def _load_gemini_keys():
 API_KEYS = _load_gemini_keys()
 API_KEY = API_KEYS[0] if API_KEYS else ""  # used only for the "is any key configured?" check
 APP_PASSWORD = st.secrets.get("APP_PASSWORD", "")
-MODEL = st.secrets.get("GEMINI_MODEL", "gemini-3.5-flash")
+MODEL = st.secrets.get("GEMINI_MODEL", "gemini-flash-latest")
 # Free tier: 10 generations per visitor session (will become per-account after auth).
 SESSION_LIMIT = min(int(st.secrets.get("SESSION_LIMIT", "10")), 10)
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
@@ -685,8 +685,7 @@ def fetch_url_text(url: str) -> str:
 
 # Known-good fallbacks are appended so generation still works even if a preview
 # model name changes.
-GEN_MODELS = [MODEL, "gemini-3-flash-preview", "gemini-3.1-flash-lite",
-              "gemini-2.0-flash", "gemini-1.5-flash"]
+GEN_MODELS = [MODEL, "gemini-flash-latest", "gemini-3.6-flash", "gemini-3.5-flash"]
 # De-dupe while preserving order.
 GEN_MODELS = list(dict.fromkeys([m for m in GEN_MODELS if m]))
 
