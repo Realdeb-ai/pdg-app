@@ -144,6 +144,11 @@ AUTH = {
         "forgot": "Forgot your password?",
         "recover_btn": "Send reset link",
         "recover_sent": "If an account exists for that email, a password-reset link has been sent. Check your inbox (and spam).",
+        "set_new_pw": "Set a new password",
+        "new_pw_ph": "New password (min 6 characters)",
+        "update_pw_btn": "Update password",
+        "pw_updated": "Password updated. You can sign in now with your new password.",
+        "pw_update_err": "Could not update the password. The reset link may have expired — request a new one.",
     },
     "ru": {
         "title": "Создайте аккаунт, чтобы пользоваться генератором",
@@ -161,6 +166,11 @@ AUTH = {
         "forgot": "Забыли пароль?",
         "recover_btn": "Отправить ссылку для сброса",
         "recover_sent": "Если аккаунт с такой почтой существует, письмо со ссылкой для сброса пароля отправлено. Проверьте почту (и спам).",
+        "set_new_pw": "Задайте новый пароль",
+        "new_pw_ph": "Новый пароль (минимум 6 символов)",
+        "update_pw_btn": "Сохранить новый пароль",
+        "pw_updated": "Пароль обновлён. Теперь войдите с новым паролем.",
+        "pw_update_err": "Не удалось обновить пароль. Возможно, ссылка устарела — запросите новую.",
     },
 }
 
@@ -201,6 +211,36 @@ def sb_recover(email):
     return requests.post(f"{SUPABASE_URL}/auth/v1/recover", headers=SB_HEADERS,
                          json={"email": email}, timeout=30)
 
+def sb_update_password(access_token, new_password):
+    # Uses the short-lived recovery access_token from the reset link to set a new password.
+    return requests.put(f"{SUPABASE_URL}/auth/v1/user",
+                        headers={**SB_HEADERS, "Authorization": f"Bearer {access_token}"},
+                        json={"password": new_password}, timeout=30)
+
+def _recovery_bridge():
+    # Supabase puts the recovery token in the URL hash (#access_token=...&type=recovery),
+    # which Streamlit can't read server-side. This tiny script moves it into a query
+    # param and reloads, so Python can pick it up via st.query_params. Fails silently.
+    import streamlit.components.v1 as components
+    components.html(
+        """
+        <script>
+        try {
+          var h = (window.parent.location.hash || "");
+          if (h.indexOf("access_token") !== -1 && h.indexOf("recovery") !== -1) {
+            var p = new URLSearchParams(h.replace(/^#/, ""));
+            var at = p.get("access_token");
+            if (at) {
+              var base = window.parent.location.href.split("#")[0].split("?")[0];
+              window.parent.location.replace(base + "?recovery_at=" + encodeURIComponent(at));
+            }
+          }
+        } catch (e) {}
+        </script>
+        """,
+        height=0,
+    )
+
 def sb_set_usage(used, period_start):
     tok = st.session_state.get("sb_token")
     if not tok:
@@ -213,9 +253,35 @@ def sb_set_usage(used, period_start):
         pass
 
 def render_auth(a):
+    # Password-recovery step: if we arrived from a reset link, run the hash->query
+    # bridge and, once the token is in the query, show a "set new password" form.
+    _recovery_bridge()
+    _rec_at = st.query_params.get("recovery_at")
+    if _rec_at:
+        st.markdown(f"<div class='hero'><h1>{a.get('set_new_pw', 'Set a new password')}</h1></div>",
+                    unsafe_allow_html=True)
+        _np = st.text_input(a.get("new_pw_ph", "New password"), type="password", key="np_new")
+        if st.button(a.get("update_pw_btn", "Update password"), type="primary", key="np_btn"):
+            if len(_np or "") < 6:
+                st.warning(a.get("new_pw_ph", "New password"))
+            else:
+                try:
+                    _ur = sb_update_password(_rec_at, _np)
+                    if _ur.status_code == 200:
+                        st.session_state["pw_reset_ok"] = True
+                        st.query_params.clear()
+                        st.rerun()
+                    else:
+                        st.error(a.get("pw_update_err", "Could not update the password."))
+                except Exception:
+                    st.error(a.get("pw_update_err", "Could not update the password."))
+        return
+
     st.markdown(f"<div class='hero'><h1>{a['title']}</h1><p>{a['sub']}</p></div>", unsafe_allow_html=True)
     tab_in, tab_up = st.tabs([a["signin"], a["register"]])
     with tab_in:
+        if st.session_state.pop("pw_reset_ok", False):
+            st.success(a.get("pw_updated", "Password updated. Sign in with your new password."))
         e = st.text_input(a["email"], key="li_e")
         p = st.text_input(a["password"], type="password", key="li_p")
         if st.button(a["signin_btn"], type="primary", key="li_btn"):
