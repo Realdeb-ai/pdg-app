@@ -23,13 +23,17 @@ MODEL = st.secrets.get("GEMINI_MODEL", "gemini-3.5-flash")
 SESSION_LIMIT = min(int(st.secrets.get("SESSION_LIMIT", "10")), 10)
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
-st.set_page_config(page_title="Product Description Generator", page_icon="•", layout="centered")
+st.set_page_config(page_title="Product Description Generator", page_icon="•",
+                   layout="centered", initial_sidebar_state="expanded")
 
 # ---------- styling ----------
 CSS = """
 <style>
 /* hide default streamlit chrome */
 #MainMenu, footer, header {visibility: hidden;}
+[data-testid="stStatusWidget"], [data-testid="stToolbar"], .stAppDeployButton {display: none !important;}
+a[href*="streamlit.io"], .viewerBadge_container__, .viewerBadge_link__ {display: none !important;}
+[data-testid="StyledFullScreenButton"], button[title="View fullscreen"] {display: none !important;}
 .block-container {padding-top: 1.4rem; padding-bottom: 3rem; max-width: 760px;}
 
 /* hero header — calm, muted, refined */
@@ -124,6 +128,8 @@ AUTH = {
         "err_register": "Could not register. Try another email or a stronger password (min 6 characters).",
         "check_email": "Account created. Please confirm your email, then sign in.",
         "logout": "Log out", "hi": "Hi, {name}",
+        "account": "Account", "history_title": "Your listings", "clear": "Clear listings",
+        "history_empty": "Your generated listings will appear here.",
     },
     "ru": {
         "title": "Создайте аккаунт, чтобы пользоваться генератором",
@@ -135,6 +141,8 @@ AUTH = {
         "err_register": "Не удалось зарегистрироваться. Другая почта или пароль надёжнее (мин. 6 символов).",
         "check_email": "Аккаунт создан. Подтвердите почту и войдите.",
         "logout": "Выйти", "hi": "Привет, {name}",
+        "account": "Аккаунт", "history_title": "Ваши описания", "clear": "Очистить описания",
+        "history_empty": "Здесь появятся сгенерированные описания.",
     },
 }
 
@@ -583,16 +591,34 @@ def render_result(out, t, dl_key, label=""):
 # ---------- UI ----------
 st.markdown(f"<div class='hero'><h1>{t['title']}</h1><p>{t['caption']}</p></div>", unsafe_allow_html=True)
 
-_g1, _g2 = st.columns([3, 1])
-with _g1:
-    st.markdown(f"<div style='padding-top:6px;color:#94a3b8'>{a['hi'].format(name=st.session_state.get('sb_name',''))}</div>",
-                unsafe_allow_html=True)
-with _g2:
-    if st.button(a["logout"], key="logout_btn"):
+if "history" not in st.session_state:
+    st.session_state["history"] = []
+
+with st.sidebar:
+    st.markdown(f"### {a.get('account', 'Account')}")
+    st.markdown(a["hi"].format(name=st.session_state.get("sb_name", "")))
+    if st.button(a["logout"], key="logout_btn", use_container_width=True):
         for _k in ("sb_token", "sb_name", "used", "sb_rt"):
             st.session_state.pop(_k, None)
         _ls_set("sb_rt", "")
         st.rerun()
+    st.divider()
+    st.markdown(f"### {a.get('history_title', 'Your listings')}")
+    if st.session_state["history"]:
+        if st.button(a.get("clear", "Clear"), key="clear_hist", use_container_width=True):
+            st.session_state["history"] = []
+            st.rerun()
+        for _i, _it in enumerate(st.session_state["history"]):
+            _ttl = _it.get("label") or (_it["out"].get("seo_title", "") or "")[:40]
+            with st.expander(_ttl or f"#{_i + 1}"):
+                st.code(_it["out"].get("seo_title", ""), language=None)
+                st.write(_it["out"].get("description", ""))
+                for _b in _it["out"].get("bullet_points", []):
+                    st.markdown(f"- {_b}")
+                st.code(", ".join(_it["out"].get("tags", [])), language=None)
+                st.code(_it["out"].get("meta_description", ""), language=None)
+    else:
+        st.caption(a.get("history_empty", ""))
 
 remaining = SESSION_LIMIT - st.session_state["used"]
 st.markdown(f"<div class='usage'>{t['gens_left'].format(n=max(remaining, 0), lim=SESSION_LIMIT)}</div>",
@@ -671,6 +697,7 @@ if st.button(t["generate"], type="primary", use_container_width=True):
                     )
                     st.session_state["used"] += 1
                     sb_set_used(st.session_state["used"])
+                    st.session_state["history"].insert(0, {"label": label, "out": out})
                     render_result(out, t, dl_key=f"dl_{idx}", label=label)
                 except json.JSONDecodeError:
                     st.error(t["err_format"])
