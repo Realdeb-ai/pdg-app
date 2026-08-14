@@ -23,27 +23,19 @@ MODEL = st.secrets.get("GEMINI_MODEL", "gemini-3.5-flash")
 SESSION_LIMIT = min(int(st.secrets.get("SESSION_LIMIT", "10")), 10)
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
-st.set_page_config(page_title="Product Description Generator", page_icon="•",
-                   layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Product Description Generator", page_icon="•", layout="centered")
 
 # ---------- styling ----------
 CSS = """
 <style>
-/* hide default streamlit chrome (but keep the sidebar toggle!) */
-#MainMenu {visibility: hidden;}
+/* hide default streamlit chrome */
+#MainMenu, header {visibility: hidden;}
 footer {display: none !important;}
 [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"], .stAppDeployButton {display: none !important;}
 [data-testid="stElementToolbar"], [data-testid="stElementToolbarButton"] {display: none !important;}
 [data-testid="StyledFullScreenButton"], [title="View fullscreen"], [aria-label="Fullscreen"] {display: none !important;}
 a[href*="streamlit.io"], [class*="viewerBadge"] {display: none !important;}
-/* keep the open/close arrow for the sidebar visible */
-[data-testid="stSidebarCollapsedControl"], [data-testid="collapsedControl"] {display: block !important; visibility: visible !important;}
-/* sidebar: slimmer + tidy */
-section[data-testid="stSidebar"] {width: 290px !important; min-width: 290px !important; background: #0d1117;}
-section[data-testid="stSidebar"] .block-container {padding: 1rem .6rem;}
-section[data-testid="stSidebar"] h3 {font-size: 1rem; margin-bottom: .3rem;}
-section[data-testid="stSidebar"] .streamlit-expanderHeader, section[data-testid="stSidebar"] summary {font-size: .85rem;}
-.block-container {padding-top: 1.4rem; padding-bottom: 3rem; max-width: 760px;}
+.block-container {padding-top: 1.2rem; padding-bottom: 3rem; max-width: 760px;}
 
 /* hero header — calm, muted, refined */
 .hero {
@@ -603,31 +595,16 @@ st.markdown(f"<div class='hero'><h1>{t['title']}</h1><p>{t['caption']}</p></div>
 if "history" not in st.session_state:
     st.session_state["history"] = []
 
-with st.sidebar:
-    st.markdown(f"### {a.get('account', 'Account')}")
-    st.markdown(a["hi"].format(name=st.session_state.get("sb_name", "")))
+_g1, _g2 = st.columns([3, 1])
+with _g1:
+    st.markdown(f"<div style='padding-top:8px;color:#94a3b8'>{a['hi'].format(name=st.session_state.get('sb_name',''))}</div>",
+                unsafe_allow_html=True)
+with _g2:
     if st.button(a["logout"], key="logout_btn", use_container_width=True):
         for _k in ("sb_token", "sb_name", "used", "sb_rt"):
             st.session_state.pop(_k, None)
         _ls_set("sb_rt", "")
         st.rerun()
-    st.divider()
-    st.markdown(f"### {a.get('history_title', 'Your listings')}")
-    if st.session_state["history"]:
-        if st.button(a.get("clear", "Clear"), key="clear_hist", use_container_width=True):
-            st.session_state["history"] = []
-            st.rerun()
-        for _i, _it in enumerate(st.session_state["history"]):
-            _ttl = _it.get("label") or (_it["out"].get("seo_title", "") or "")[:40]
-            with st.expander(_ttl or f"#{_i + 1}"):
-                st.code(_it["out"].get("seo_title", ""), language=None)
-                st.write(_it["out"].get("description", ""))
-                for _b in _it["out"].get("bullet_points", []):
-                    st.markdown(f"- {_b}")
-                st.code(", ".join(_it["out"].get("tags", [])), language=None)
-                st.code(_it["out"].get("meta_description", ""), language=None)
-    else:
-        st.caption(a.get("history_empty", ""))
 
 remaining = SESSION_LIMIT - st.session_state["used"]
 st.markdown(f"<div class='usage'>{t['gens_left'].format(n=max(remaining, 0), lim=SESSION_LIMIT)}</div>",
@@ -707,8 +684,20 @@ if st.button(t["generate"], type="primary", use_container_width=True):
                     st.session_state["used"] += 1
                     sb_set_used(st.session_state["used"])
                     st.session_state["history"].insert(0, {"label": label, "out": out})
-                    render_result(out, t, dl_key=f"dl_{idx}", label=label)
                 except json.JSONDecodeError:
                     st.error(t["err_format"])
                 except Exception as e:
                     st.error(str(e))
+
+# ---------- saved listings (persist across reruns / language switches) ----------
+if st.session_state.get("history"):
+    st.divider()
+    _h1, _h2 = st.columns([3, 1])
+    with _h1:
+        st.markdown(f"<div class='section'>{a.get('history_title', 'Your listings')}</div>", unsafe_allow_html=True)
+    with _h2:
+        if st.button(a.get("clear", "Clear"), key="clear_hist", use_container_width=True):
+            st.session_state["history"] = []
+            st.rerun()
+    for _i, _it in enumerate(st.session_state["history"]):
+        render_result(_it["out"], t, dl_key=f"hist_{_i}", label=_it.get("label", ""))
