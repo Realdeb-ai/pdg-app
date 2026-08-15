@@ -1,3 +1,4 @@
+# build: redeploy trigger 2026-08-15
 """
 Product Description Generator — SaaS MVP (Streamlit + Gemini)
 Generates SEO-optimized product content (title, description, bullets, tags, meta)
