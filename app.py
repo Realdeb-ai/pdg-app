@@ -117,6 +117,12 @@ div[data-testid="stButton"] button[kind="primary"]:hover {background: #4338ca !i
     padding: 4px 18px 14px;
     margin-top: 10px;
 }
+/* Clear hamburger button (top-left) to open the "my listings" side panel */
+[data-testid="stSidebarCollapsedControl"] {display:flex !important; visibility:visible !important; opacity:1 !important; top:10px !important; left:10px !important;}
+[data-testid="stSidebarCollapsedControl"] button {background:#161b26 !important; border:1px solid #2b3448 !important; border-radius:10px !important; width:auto !important; padding:6px 12px !important;}
+[data-testid="stSidebarCollapsedControl"] button svg {display:none !important;}
+[data-testid="stSidebarCollapsedControl"] button::before {content:"\2630"; font-size:20px; line-height:1; color:#e8ebf2;}
+[data-testid="stSidebarCollapsedControl"] button:hover {border-color:#4f7cff !important;}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
