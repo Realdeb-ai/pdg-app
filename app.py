@@ -639,18 +639,41 @@ elif _now - _ps >= 86400:
 
 # ---------- prompt builder ----------
 MARKET_HINTS = {
-    "Shopify": "Direct-to-consumer store. Persuasive, brand-driven, benefit-led copy. Description ~120-180 words.",
-    "Amazon": "Marketplace listing. Keyword-dense, scannable, feature+benefit bullets, compliant (no unverifiable claims). 5 strong bullets.",
-    "Etsy": "Handmade/creative marketplace. Warm, story-driven, artisan tone, strong long-tail tags (Etsy allows up to 13 tags).",
-    "eBay": "Global auction/fixed-price marketplace. Clear keyword-rich title (up to 80 chars), factual condition and spec details, scannable bullets.",
-    "Walmart": "Large US marketplace. Concise, compliant, keyword-optimized title and feature bullets; clear family-friendly tone.",
-    "Vinted": "Second-hand fashion marketplace (Europe). Casual, honest, concise. Highlight brand, size, condition, material; friendly peer-to-peer tone.",
-    "AliExpress": "Global budget marketplace. Keyword-dense, spec-focused, many long-tail tags, plain and clear wording.",
-    "Allegro": "Leading Polish/Central-European marketplace. Precise, spec-driven, keyword-rich title and bullets; trustworthy tone.",
-    "Wildberries": "Large marketplace (CIS/Eastern Europe). Keyword-rich, benefit-led, well-structured bullets; clear and persuasive.",
-    "Bol.com": "Leading Benelux marketplace. Clear, informative, benefit-led copy with correct product specs; trustworthy tone.",
+    "Shopify": (
+        "Direct-to-consumer BRAND store. Emotive, benefit-led brand storytelling that builds desire. "
+        "Open the description with a hook, then 130-180 words. Bullets = lifestyle benefits (how it improves the buyer's life), NOT dry specs. "
+        "Title: brand-friendly + primary keyword. Tags: SEO collection/blog keywords."
+    ),
+    "Amazon": (
+        "Amazon marketplace. Title front-loads the MAIN keyword + key attributes (brand, material, size, quantity). "
+        "Exactly 5 bullets, each starting with a CAPITALIZED benefit label then a dash, e.g. 'PREMIUM MATERIAL — ...'. "
+        "Keyword-dense but COMPLIANT: no unverifiable claims, no competitor brand names. Tags = backend search terms (single words / synonyms)."
+    ),
+    "Etsy": (
+        "Etsy handmade/vintage. Warm, personal, artisan storytelling; mention who it's for and gifting occasions. "
+        "Title = a long descriptive long-tail phrase real buyers search. Provide EXACTLY 13 tags, each a multi-word long-tail phrase "
+        "(material, style, occasion, recipient, aesthetic). Bullets highlight craftsmanship and materials."
+    ),
+    "eBay": (
+        "eBay. Title <=80 chars PACKED with brand + model + key specs buyers search. "
+        "Description is FACTUAL and spec-first: condition, exact dimensions, material, compatibility, what's included. "
+        "Bullets = concrete specs, no marketing fluff. Trustworthy tone."
+    ),
+    "Walmart": (
+        "Walmart US. Concise, compliant, family-friendly, everyday-value angle. Short keyword-optimized title. "
+        "Bullets focus on practical use and value for money; clear specs. Avoid hype and superlatives."
+    ),
+    "Vinted": (
+        "Vinted second-hand fashion (peer-to-peer, EU). Casual, honest, first-person tone like a real seller ('Selling my...'). "
+        "MUST clearly state: brand, size, exact MATERIAL/FABRIC, colour, CONDITION, measurements and fit. "
+        "Bullets = these concrete facts. Tags = brand + garment type + style. NO corporate marketing language."
+    ),
+    "AliExpress": (
+        "AliExpress global budget marketplace. Very keyword-dense, spec-focused, PLAIN simple wording (many non-native buyers). "
+        "Long title stuffed with attributes and synonyms. Many long-tail tags. Bullets = concrete specs and use-cases."
+    ),
 }
-MARKETPLACES = ["Shopify", "Amazon", "Etsy", "eBay", "Walmart", "Vinted", "AliExpress", "Allegro", "Wildberries", "Bol.com"]
+MARKETPLACES = ["Shopify", "Amazon", "Etsy", "eBay", "Walmart", "Vinted", "AliExpress"]
 
 def build_prompt(name, features, category, marketplace, tone, keywords, has_image=False, language="English"):
     hint = MARKET_HINTS.get(marketplace, "")
@@ -669,6 +692,8 @@ Key features / details: {features or "(infer from the attached photo)"}
 Focus keywords to weave in naturally (optional): {keywords or "(none provided)"}
 
 Write compelling, original, SEO-optimized listing content. Avoid keyword stuffing, avoid false claims.
+
+IMPORTANT — tailor the output specifically to {marketplace}: strictly follow the "Marketplace guidance" above (its tone, title length, number/format of tags and bullets, and what to emphasize). The result for {marketplace} must read differently from other marketplaces and match how top sellers write there.
 
 CRITICAL LANGUAGE RULE: Write EVERY field (seo_title, description, bullet_points, tags, meta_description) entirely in {language}. Every single word of the output must be in {language}. Do NOT use English unless {language} is "English". If focus keywords are in another language, translate/adapt them naturally into {language}.
 
