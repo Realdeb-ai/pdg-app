@@ -713,14 +713,6 @@ T = {
     },
 }
 
-# ---------- brand logo (centered, top) ----------
-try:
-    _lo1, _lo2, _lo3 = st.columns([3, 2, 3])
-    with _lo2:
-        st.image("logo.jpg", use_container_width=True)
-except Exception:
-    pass
-
 # ---------- UI language picker (top-right) ----------
 _a, _b = st.columns([3, 1])
 with _b:
