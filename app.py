@@ -1013,7 +1013,8 @@ if st.button(t["generate"], type="primary", use_container_width=True):
                 st.warning(t.get("warn_partial", T["en"]["warn_partial"]).format(done=remaining, total=len(imgs)))
         else:
             jobs = [None]
-        st.success(t["done"])
+        _status = st.empty()  # "ready" message goes here — filled ONLY after generation succeeds
+        _any_ok = False
         for idx, ph in enumerate(jobs, start=1):
             img_bytes = ph.getvalue() if ph else None
             img_mime = ph.type if ph else None
@@ -1029,7 +1030,10 @@ if st.button(t["generate"], type="primary", use_container_width=True):
                     sb_set_usage(st.session_state["used"], st.session_state.get("period_start") or time.time())
                     st.session_state["history"].insert(0, {"label": label, "out": out})
                     render_result(out, t, dl_key=f"dl_{idx}", label=label)
+                    _any_ok = True
                 except json.JSONDecodeError:
                     st.error(t["err_format"])
                 except Exception as e:
                     st.error(str(e))
+        if _any_ok:
+            _status.success(t["done"])
