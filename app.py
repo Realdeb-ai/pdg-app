@@ -43,7 +43,11 @@ MODEL = st.secrets.get("GEMINI_MODEL", "gemini-flash-latest")
 SESSION_LIMIT = min(int(st.secrets.get("SESSION_LIMIT", "10")), 10)
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
-st.set_page_config(page_title="Product Description Generator", page_icon="•",
+try:
+    _page_icon = "logo.jpg"  # tab favicon = SellyAI logo
+except Exception:
+    _page_icon = "🛍️"
+st.set_page_config(page_title="SellyAI", page_icon=_page_icon,
                    layout="centered", initial_sidebar_state="collapsed")
 
 # ---------- styling ----------
