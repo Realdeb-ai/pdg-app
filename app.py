@@ -926,14 +926,17 @@ st.markdown(f"<div class='hero'><h1>{t['title']}</h1><p>{t['caption']}</p></div>
 if "history" not in st.session_state:
     st.session_state["history"] = []
 
-# ---------- left panel (opens via the arrow top-left): saved listings ----------
-with st.sidebar:
-    st.markdown(f"### {a.get('history_title', 'Your listings')}")
-    if st.session_state["history"]:
-        if st.button(a.get("clear", "Clear"), key="clear_hist", use_container_width=True):
+# ---------- saved listings panel (in-page ☰ button; works inside the embedded iframe) ----------
+_hist = st.session_state["history"]
+_hist_label = "☰ " + a.get("history_title", "Your listings") + (f" ({len(_hist)})" if _hist else "")
+if st.button(_hist_label, key="hist_toggle"):
+    st.session_state["show_hist"] = not st.session_state.get("show_hist", False)
+if st.session_state.get("show_hist"):
+    if _hist:
+        if st.button(a.get("clear", "Clear"), key="clear_hist"):
             st.session_state["history"] = []
             st.rerun()
-        for _i, _it in enumerate(st.session_state["history"]):
+        for _i, _it in enumerate(_hist):
             _ttl = _it.get("label") or (_it["out"].get("seo_title", "") or "")[:38]
             with st.expander(_ttl or f"#{_i + 1}"):
                 st.code(_it["out"].get("seo_title", ""), language=None)
