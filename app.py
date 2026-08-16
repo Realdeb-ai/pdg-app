@@ -132,24 +132,45 @@ SUPABASE_ANON = st.secrets.get(
 )
 SB_HEADERS = {"apikey": SUPABASE_ANON, "Content-Type": "application/json"}
 
-# Browser persistence ("remember me") is disabled — safe no-op helpers keep the
-# rest of the auth code working within a session (session-only login).
-_LS = None
+# Browser persistence ("remember me") via a tiny JS bridge (localStorage <-> URL ?rt=).
+# No external package, so it can never break the build; every call is wrapped so a
+# failure just degrades to session-only login (no crash).
+import streamlit.components.v1 as _components
 
-def _ls_get(k):
-    if not _LS:
-        return None
-    try:
-        v = _LS.getItem(k)
-        return v or None
-    except Exception:
-        return None
-
-def _ls_set(k, v):
-    if not _LS:
+def _persist_write_rt(token):
+    if not token:
         return
     try:
-        _LS.setItem(k, v, key=f"lsset_{k}")
+        _components.html(
+            "<script>try{window.parent.localStorage.setItem('pdg_rt',"
+            + json.dumps(str(token)) + ");}catch(e){}</script>", height=0)
+    except Exception:
+        pass
+
+def _persist_clear_rt():
+    try:
+        _components.html(
+            "<script>try{window.parent.localStorage.removeItem('pdg_rt');}catch(e){}</script>", height=0)
+    except Exception:
+        pass
+
+def _persist_bootstrap():
+    # If a saved token is in localStorage but not yet in the URL, add it as ?rt= and reload.
+    try:
+        _components.html(
+            """
+            <script>
+            try{
+              var W = window.parent, rt = null;
+              try { rt = W.localStorage.getItem('pdg_rt'); } catch(e){}
+              var href = W.location.href;
+              if (rt && href.indexOf('rt=') === -1) {
+                var sep = (href.indexOf('?') === -1) ? '?' : '&';
+                W.location.replace(href.split('#')[0] + sep + 'rt=' + encodeURIComponent(rt));
+              }
+            }catch(e){}
+            </script>
+            """, height=0)
     except Exception:
         pass
 
@@ -326,7 +347,7 @@ def _sb_apply_session(data: dict):
     rt = data.get("refresh_token")
     if rt:
         st.session_state["sb_rt"] = rt
-        _ls_set("sb_rt", rt)
+        _persist_write_rt(rt)
 
 def sb_refresh(rt):
     return requests.post(f"{SUPABASE_URL}/auth/v1/token?grant_type=refresh_token",
@@ -726,14 +747,26 @@ a = {**AUTH["en"], **AUTH.get(_lang_code, {})}
 
 # Remember me: restore a saved session from the browser before showing the login screen.
 if not st.session_state.get("sb_token"):
-    _rt = st.session_state.get("sb_rt") or _ls_get("sb_rt")
-    if _rt:
+    if st.session_state.pop("just_logged_out", False):
+        _persist_clear_rt()  # user logged out: wipe saved token, skip auto-restore this run
         try:
-            _rr = sb_refresh(_rt)
-            if _rr.status_code == 200 and _rr.json().get("access_token"):
-                _sb_apply_session(_rr.json())
+            del st.query_params["rt"]
         except Exception:
             pass
+    else:
+        _persist_bootstrap()  # moves a saved token from localStorage into ?rt=
+        _rt = st.session_state.get("sb_rt") or st.query_params.get("rt")
+        if _rt:
+            try:
+                _rr = sb_refresh(_rt)
+                if _rr.status_code == 200 and _rr.json().get("access_token"):
+                    _sb_apply_session(_rr.json())
+                    try:
+                        del st.query_params["rt"]  # don't leave the token in the URL
+                    except Exception:
+                        pass
+            except Exception:
+                pass
 
 if not st.session_state.get("sb_token"):
     render_auth(a)
@@ -943,7 +976,8 @@ with _g2:
     if st.button(a["logout"], key="logout_btn", use_container_width=True):
         for _k in ("sb_token", "sb_name", "used", "sb_rt"):
             st.session_state.pop(_k, None)
-        _ls_set("sb_rt", "")
+        st.session_state["just_logged_out"] = True
+        _persist_clear_rt()
         st.rerun()
 
 remaining = SESSION_LIMIT - st.session_state["used"]
