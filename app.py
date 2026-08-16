@@ -790,37 +790,55 @@ elif _now - _ps >= 86400:
 # ---------- prompt builder ----------
 MARKET_HINTS = {
     "Shopify": (
-        "Direct-to-consumer BRAND store. Emotive, benefit-led brand storytelling that builds desire. "
-        "Open the description with a hook, then 130-180 words. Bullets = lifestyle benefits (how it improves the buyer's life), NOT dry specs. "
-        "Title: brand-friendly + primary keyword. Tags: SEO collection/blog keywords."
+        "SHOPIFY — a direct-to-consumer BRAND store. VOICE: warm, confident, benefit-led brand storytelling that builds desire while staying truthful. "
+        "TITLE: brand-friendly and clean, primary keyword included, ~50-70 chars, Title Case, no marketplace clutter. "
+        "DESCRIPTION: open with a short hook sentence, then 120-180 words in 1-2 scannable paragraphs about how the product fits the buyer's life (not a spec dump). "
+        "BULLETS: 4-6 lifestyle benefits, each a short phrase (what the buyer gains), not raw specs. "
+        "TAGS: 8-12 SEO collection/search keywords a shopper would actually type. "
+        "Build desire only through concrete, real benefits — never through invented quality or hype adjectives."
     ),
     "Amazon": (
-        "Amazon marketplace. Title front-loads the MAIN keyword + key attributes (brand, material, size, quantity). "
-        "Exactly 5 bullets, each starting with a CAPITALIZED benefit label then a dash, e.g. 'PREMIUM MATERIAL — ...'. "
-        "Keyword-dense but COMPLIANT: no unverifiable claims, no competitor brand names. Tags = backend search terms (single words / synonyms)."
+        "AMAZON — a high-intent search marketplace; strict and compliant. VOICE: clear, factual, product-first, zero fluff. "
+        "TITLE: front-load the MAIN keyword, then key attributes (brand, product type, colour, material, size, quantity), Title Case, ~150-200 chars, no promo words, no '!'. "
+        "DESCRIPTION: one factual paragraph covering the core attributes and use. "
+        "BULLETS: EXACTLY 5, each starting with a CAPITALIZED benefit label then ' — ', e.g. 'DURABLE BUILD — ...'; each conveys one concrete attribute/benefit. "
+        "TAGS: backend search terms as single words / short synonyms, no competitor brand names, no repetition. "
+        "COMPLIANT: no unverifiable claims, no shipping/seller info, no 'best / #1 / must-have'."
     ),
     "Etsy": (
-        "Etsy handmade/vintage. Warm, personal, artisan storytelling; mention who it's for and gifting occasions. "
-        "Title = a long descriptive long-tail phrase real buyers search. Provide EXACTLY 13 tags, each a multi-word long-tail phrase "
-        "(material, style, occasion, recipient, aesthetic). Bullets highlight craftsmanship and materials."
+        "ETSY — handmade, vintage and craft buyers who value story and uniqueness. VOICE: warm, personal, artisan; mention who it's for and gifting occasions when it genuinely fits. "
+        "TITLE: a long, descriptive long-tail phrase real buyers search (~110-140 chars), leading with the most-searched terms (item + style + material + occasion). "
+        "DESCRIPTION: friendly, slightly personal story — what it is, materials, craftsmanship/finish, dimensions if provided, and gifting/use ideas. "
+        "BULLETS: 4-6 points highlighting craftsmanship, materials, size and use. "
+        "TAGS: EXACTLY 13, each a multi-word long-tail phrase (keep each <=20 chars) mixing material, style, occasion, recipient and aesthetic — no single generic words, no unrelated brands."
     ),
     "eBay": (
-        "eBay. Title <=80 chars PACKED with brand + model + key specs buyers search. "
-        "Description is FACTUAL and spec-first: condition, exact dimensions, material, compatibility, what's included. "
-        "Bullets = concrete specs, no marketing fluff. Trustworthy tone."
+        "EBAY — buyers search by brand, model and exact specs; trust and accuracy win. VOICE: factual, informative, no fluff. "
+        "TITLE: <=80 chars PACKED with the terms buyers search — brand + model + product type + key specs + size/colour. "
+        "DESCRIPTION: spec-first and honest — condition, exact dimensions/size, material, colour, compatibility / what's included, and any visible flaws. "
+        "BULLETS: 5-7 concrete spec points, no marketing language. "
+        "TAGS: brand + model + product type + key specs. Trustworthy tone throughout."
     ),
     "Walmart": (
-        "Walmart US. Concise, compliant, family-friendly, everyday-value angle. Short keyword-optimized title. "
-        "Bullets focus on practical use and value for money; clear specs. Avoid hype and superlatives."
+        "WALMART — mainstream, everyday-value, family-friendly shoppers; compliant and plain. VOICE: simple, practical, no hype or superlatives. "
+        "TITLE: short and keyword-optimized — brand + product type + key attribute (+ size/colour), Title Case. "
+        "DESCRIPTION: concise factual paragraph on what it is, practical use and value. "
+        "BULLETS: 4-6 points on practical use, value for money and clear specs. "
+        "TAGS: 8-12 practical search terms. Avoid 'best / premium / amazing'."
     ),
     "Vinted": (
-        "Vinted second-hand fashion (peer-to-peer, EU). Casual, honest, first-person tone like a real seller ('Selling my...'). "
-        "MUST clearly state: brand, size, exact MATERIAL/FABRIC, colour, CONDITION, measurements and fit. "
-        "Bullets = these concrete facts. Tags = brand + garment type + style. NO corporate marketing language."
+        "VINTED — peer-to-peer second-hand fashion (EU). VOICE: casual, honest, first-person, like a real person selling their own item ('Selling my...'). "
+        "TITLE: brand + item + size + colour, short and natural. "
+        "DESCRIPTION: short and personal; state the essentials up front — brand, size, exact MATERIAL/FABRIC (only if known), colour, CONDITION, measurements and fit — and be upfront about any flaws. "
+        "BULLETS: 3-6 concrete facts (brand, size, material, colour, condition, measurements). "
+        "TAGS: brand + garment type + style. NO corporate marketing language, NO invented measurements, NO authenticity claims unless explicitly known."
     ),
     "AliExpress": (
-        "AliExpress global budget marketplace. Very keyword-dense, spec-focused, PLAIN simple wording (many non-native buyers). "
-        "Long title stuffed with attributes and synonyms. Many long-tail tags. Bullets = concrete specs and use-cases."
+        "ALIEXPRESS — global budget marketplace, many non-native-English buyers. VOICE: plain, simple, very keyword-dense and spec-focused; short clear sentences. "
+        "TITLE: long, stuffed with attributes and synonyms buyers might search (product type + material + colour + size + use + synonyms). "
+        "DESCRIPTION: simple sentences covering specs and use-cases. "
+        "BULLETS: 5-6 concrete spec / use-case points in plain wording. "
+        "TAGS: many (10-15) long-tail terms and synonyms."
     ),
 }
 MARKETPLACES = ["Shopify", "Amazon", "Etsy", "eBay", "Walmart", "Vinted", "AliExpress"]
@@ -856,7 +874,7 @@ CORE PRINCIPLE — write a MARKETPLACE LISTING, not a generic product descriptio
 
 9. AMAZON-SPECIFIC. Clear, factual, product-focused. Avoid promotional claims, seller/contact info, URLs, excessive exclamation marks, keyword stuffing, unsubstantiated claims, shipping info, artificial urgency, and "best / number one / must-have" claims.
 
-10. PLATFORM ADAPTATION. Vinted: natural, concise second-hand style. Amazon: structured, factual commercial listing. eBay: informative seller listing with key details and condition. Depop: casual and fashion-oriented but still factual. Facebook Marketplace: simple, direct, conversational. If the platform is unclear, use a neutral marketplace style that works across platforms.
+10. PLATFORM ADAPTATION. Fully adapt the voice, title length, description structure, number of bullets and tag style to the target marketplace using the platform playbook provided below. Shopify, Amazon, Etsy, eBay, Walmart, Vinted and AliExpress each read very differently — the same product must produce a listing that looks native to the selected marketplace and clearly different from how you'd write it for another. If the platform is unclear, use a neutral marketplace style that works across platforms.
 
 11. TITLE. Make it clear and searchable: [Brand] + [Product Type] + [Key Characteristic] + [Colour/Style] + [Size if known], e.g. "Zara Oversized Linen-Style Blazer Beige Size M". No promotional adjectives, no "!!!".
 
@@ -867,7 +885,7 @@ CORE PRINCIPLE — write a MARKETPLACE LISTING, not a generic product descriptio
 14. HUMAN QUALITY CHECK before returning: did I invent anything? use generic marketing language? exaggerate? repeat myself? state a material/brand/size/condition without sufficient evidence? add irrelevant keywords or brands? Does every sentence give useful info and match the actual product? Rewrite before returning if any answer is problematic.
 
 {img_line}Target marketplace: {marketplace}
-Platform formatting guidance (use only for length/structure — the honesty and no-hype rules above ALWAYS take priority over any persuasive tone it suggests): {hint}
+Platform playbook for {marketplace} — follow it FULLY so the listing reads unmistakably like a top {marketplace} listing (its voice, title length, description structure, number of bullets and tag style) and clearly different from another marketplace. The honesty / no-invention / no-hype rules above ALWAYS override any persuasive tone it suggests: {hint}
 Output language: {language}
 Requested tone: {tone}
 Product name: {name or "(only what is actually visible or provided — do not invent a name)"}
