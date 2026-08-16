@@ -1,2 +1,6 @@
 streamlit>=1.36
 requests>=2.31
+rembg>=2.0.50
+onnxruntime>=1.17
+pillow>=10.2
+numpy>=1.26
