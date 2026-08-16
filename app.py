@@ -988,6 +988,96 @@ def render_result(out, t, dl_key, label=""):
     st.download_button(t["download"], data=json.dumps(out, ensure_ascii=False, indent=2),
                        file_name="listing.json", mime="application/json", key=dl_key)
 
+# ---------- product photo card tool (free, local: rembg cutout + clean background) ----------
+# This is an ADDITIVE feature. It does not touch or change the text generator above/below.
+CARD_BACKGROUNDS = ["White", "Light studio", "Soft grey", "Warm beige", "Gradient blue"]
+
+@st.cache_resource(show_spinner=False)
+def _rembg_session():
+    # Loaded once per container; the model file auto-downloads on first use.
+    from rembg import new_session
+    return new_session("u2net")
+
+def _vgradient(size, top, bottom):
+    from PIL import Image
+    import numpy as np
+    ramp = np.linspace(0.0, 1.0, size)[:, None]
+    top = np.array(top, dtype=float); bottom = np.array(bottom, dtype=float)
+    row = top[None, :] * (1 - ramp) + bottom[None, :] * ramp  # size x 3
+    arr = np.repeat(row[:, None, :], size, axis=1).astype("uint8")
+    return Image.fromarray(arr, "RGB")
+
+def _make_background(kind, size):
+    from PIL import Image
+    if kind == "Light studio":
+        return _vgradient(size, (245, 246, 248), (223, 226, 230))
+    if kind == "Soft grey":
+        return _vgradient(size, (238, 238, 238), (208, 210, 213))
+    if kind == "Warm beige":
+        return _vgradient(size, (245, 240, 232), (226, 214, 198))
+    if kind == "Gradient blue":
+        return _vgradient(size, (232, 240, 250), (198, 216, 240))
+    return Image.new("RGB", (size, size), (255, 255, 255))  # White (default)
+
+def _build_card(img_bytes, bg_kind, size=1600, fill=0.82, shadow=True):
+    from rembg import remove
+    from PIL import Image, ImageFilter
+    import io
+    src = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+    if max(src.size) > 1600:
+        src.thumbnail((1600, 1600), Image.LANCZOS)
+    cut = remove(src, session=_rembg_session(), post_process_mask=True).convert("RGBA")
+    bbox = cut.getbbox()  # drop empty transparent margins around the product
+    if bbox:
+        cut = cut.crop(bbox)
+    target = int(size * fill)
+    scale = min(target / cut.width, target / cut.height)
+    nw, nh = max(1, int(cut.width * scale)), max(1, int(cut.height * scale))
+    cut = cut.resize((nw, nh), Image.LANCZOS)
+    canvas = _make_background(bg_kind, size).convert("RGBA")
+    x, y = (size - nw) // 2, (size - nh) // 2
+    if shadow and bg_kind != "White":
+        alpha = cut.split()[3]
+        sh = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        sh.paste(Image.new("RGBA", cut.size, (0, 0, 0, 110)), (x, y + int(nh * 0.04)), alpha)
+        sh = sh.filter(ImageFilter.GaussianBlur(max(4, size // 90)))
+        canvas = Image.alpha_composite(canvas, sh)
+    canvas.paste(cut, (x, y), cut)
+    buf = io.BytesIO()
+    canvas.convert("RGB").save(buf, format="JPEG", quality=92)
+    return buf.getvalue()
+
+def render_image_card_tool(t):
+    import time as _t
+    st.markdown(f"<div class='section'>{t.get('card_header', 'Product photo card')}</div>", unsafe_allow_html=True)
+    st.caption(t.get("card_hint",
+        "Upload a product photo — we remove the background and place the product on a clean, "
+        "marketplace-ready background. The product itself is never altered."))
+    photo = st.file_uploader(t.get("card_upload", "Upload a product photo"),
+                             type=["jpg", "jpeg", "png"], key="card_photo")
+    if photo:
+        st.image(photo, width=220)
+    bg_kind = st.selectbox(t.get("card_bg", "Background"), CARD_BACKGROUNDS, key="card_bg_sel")
+    remaining = SESSION_LIMIT - st.session_state.get("used", 0)
+    if st.button(t.get("card_generate", "Create photo card"), type="primary",
+                 use_container_width=True, key="card_go"):
+        if not photo:
+            st.warning(t.get("card_need", "Upload a product photo first."))
+        elif remaining <= 0:
+            st.error(t["err_limit"])
+        else:
+            with st.spinner(t.get("card_spinner", "Removing background and building your card...")):
+                try:
+                    result = _build_card(photo.getvalue(), bg_kind)
+                    st.session_state["used"] = st.session_state.get("used", 0) + 1
+                    sb_set_usage(st.session_state["used"], st.session_state.get("period_start") or _t.time())
+                    st.success(t.get("card_done", "Your photo card is ready — download below."))
+                    st.image(result, use_container_width=True)
+                    st.download_button(t.get("card_download", "Download image"), data=result,
+                                       file_name="product-card.jpg", mime="image/jpeg", key="card_dl")
+                except Exception as e:
+                    st.error(f"Could not process this image — try another photo. ({e})")
+
 # ---------- UI ----------
 st.markdown(f"<div class='hero'><h1>{t['title']}</h1><p>{t['caption']}</p></div>", unsafe_allow_html=True)
 
@@ -1035,6 +1125,20 @@ _rh, _rm = _secs_left // 3600, (_secs_left % 3600) // 60
 _usage_txt = t["gens_left"].format(n=max(remaining, 0), lim=SESSION_LIMIT)
 _usage_txt += " " + a.get("resets_in", "· resets in {h}h {m}m").format(h=_rh, m=_rm)
 st.markdown(f"<div class='usage'>{_usage_txt}</div>", unsafe_allow_html=True)
+
+# ---------- mode switch: text listing (existing) vs photo card (new, additive) ----------
+# Visible top-level switch so users can find the image tool on their own. The text
+# generator below is untouched — it simply renders only in "description" mode.
+_mode = st.radio(
+    t.get("mode_label", "What do you want to create?"),
+    ["✍️ " + t.get("mode_text", "Product description"),
+     "🖼️ " + t.get("mode_card", "Product photo card")],
+    horizontal=True, key="gen_mode",
+)
+if _mode.startswith("🖼️"):
+    render_image_card_tool(t)
+    st.stop()
+
 st.markdown(t["intro"])
 
 # --- product: photo / URL are the headline feature, shown up front ---
