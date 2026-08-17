@@ -1084,12 +1084,12 @@ def render_result(out, t, dl_key, label=""):
 CARD_BACKGROUNDS = ["White", "Light studio", "Soft grey", "Warm beige", "Gradient blue"]
 
 @st.cache_resource(show_spinner=False)
-def _rembg_session(model="birefnet-general-lite"):
-    # BiRefNet = current best free cutout model: far cleaner contours on labels,
-    # handles, straps and thin/transparent parts than isnet/u2net. The "lite"
-    # (swin-tiny) variant keeps memory small enough for Streamlit's free tier.
-    # If this rembg build doesn't ship BiRefNet (or the download fails), fall
-    # back to isnet so the app can never break. Loaded once per container.
+def _rembg_session(model="isnet-general-use"):
+    # isnet-general-use = the heaviest model that reliably fits Streamlit's free
+    # tier RAM. BiRefNet gives cleaner contours but OOM-kills this container
+    # (process gets killed, which try/except can't catch) — so we stay on isnet
+    # and squeeze quality from the edge pipeline instead (refine + defringe).
+    # Loaded once per container; model file auto-downloads on first use.
     from rembg import new_session
     try:
         return new_session(model)
@@ -1155,20 +1155,26 @@ def _build_card(img_bytes, bg_kind, size=1600, fill=0.80):
     from PIL import Image, ImageFilter, ImageDraw
     import io
     src = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-    if max(src.size) > 1400:  # a bit more detail for the model; still memory-safe
-        src.thumbnail((1400, 1400), Image.LANCZOS)
-    # BiRefNet already returns a clean, soft, anti-aliased mask — so we skip the
-    # heavy alpha-matting solver (it was the memory hog behind past crashes and
-    # added fringe on hard products). Model mask -> edge refine -> colour defringe
-    # gives a crisper, cleaner contour at a fraction of the memory.
+    if max(src.size) > 1200:  # cap keeps alpha-matting fast + memory-safe
+        src.thumbnail((1200, 1200), Image.LANCZOS)
     try:
-        cut = remove(src, session=_rembg_session(), post_process_mask=True).convert("RGBA")
+        # alpha matting = precise, clean contour edges (the big quality lever)
+        cut = remove(
+            src, session=_rembg_session(),
+            alpha_matting=True,
+            alpha_matting_foreground_threshold=250,
+            alpha_matting_background_threshold=12,
+            alpha_matting_erode_size=6,
+            post_process_mask=True,
+        ).convert("RGBA")
     except Exception:
-        # last-resort safety net: plain isnet cutout, never crash the app
-        cut = remove(src, session=_rembg_session("isnet-general-use"),
-                     post_process_mask=True).convert("RGBA")
-    cut = _refine_alpha(cut)   # kill halo + smooth the contour
-    cut = _defringe(cut)       # repaint edge with the product's own colour
+        # never crash the app if matting runs out of memory — plain cutout instead
+        cut = remove(src, session=_rembg_session(), post_process_mask=True).convert("RGBA")
+        cut = _refine_alpha(cut)
+    # matting already gives a precise soft edge; just a whisper of feather
+    _a = cut.split()[3].filter(ImageFilter.GaussianBlur(0.4))
+    cut.putalpha(_a)
+    cut = _defringe(cut)  # repaint edge with the product's own colour -> no old-bg halo
     bbox = cut.getbbox()  # drop empty transparent margins around the product
     if bbox:
         cut = cut.crop(bbox)
