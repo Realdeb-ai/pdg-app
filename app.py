@@ -1085,39 +1085,54 @@ CARD_BACKGROUNDS = ["White", "Light studio", "Soft grey", "Warm beige", "Gradien
 
 @st.cache_resource(show_spinner=False)
 def _rembg_session():
+    # isnet-general-use = noticeably cleaner cutouts than u2net for products.
     # Loaded once per container; the model file auto-downloads on first use.
     from rembg import new_session
-    return new_session("u2net")
+    return new_session("isnet-general-use")
 
-def _vgradient(size, top, bottom):
+def _radial_bg(size, inner, outer):
+    # Studio look: lighter in the centre, gently darker toward the edges -> depth/volume.
     from PIL import Image
     import numpy as np
-    ramp = np.linspace(0.0, 1.0, size)[:, None]
-    top = np.array(top, dtype=float); bottom = np.array(bottom, dtype=float)
-    row = top[None, :] * (1 - ramp) + bottom[None, :] * ramp  # size x 3
-    arr = np.repeat(row[:, None, :], size, axis=1).astype("uint8")
+    yy, xx = np.mgrid[0:size, 0:size]
+    c = (size - 1) / 2.0
+    d = np.sqrt((xx - c) ** 2 + (yy - c) ** 2) / (size * 0.72)
+    d = np.clip(d, 0.0, 1.0)[..., None]
+    inner = np.array(inner, float); outer = np.array(outer, float)
+    arr = (inner[None, None, :] * (1 - d) + outer[None, None, :] * d).astype("uint8")
     return Image.fromarray(arr, "RGB")
 
 def _make_background(kind, size):
-    from PIL import Image
     if kind == "Light studio":
-        return _vgradient(size, (245, 246, 248), (223, 226, 230))
+        return _radial_bg(size, (250, 251, 252), (214, 219, 226))
     if kind == "Soft grey":
-        return _vgradient(size, (238, 238, 238), (208, 210, 213))
+        return _radial_bg(size, (241, 242, 243), (198, 201, 205))
     if kind == "Warm beige":
-        return _vgradient(size, (245, 240, 232), (226, 214, 198))
+        return _radial_bg(size, (248, 243, 235), (219, 205, 187))
     if kind == "Gradient blue":
-        return _vgradient(size, (232, 240, 250), (198, 216, 240))
-    return Image.new("RGB", (size, size), (255, 255, 255))  # White (default)
+        return _radial_bg(size, (238, 245, 252), (188, 208, 236))
+    # White: clean, but a whisper of studio depth so it is not dead-flat.
+    return _radial_bg(size, (255, 255, 255), (238, 240, 243))
 
-def _build_card(img_bytes, bg_kind, size=1600, fill=0.82, shadow=True):
+def _clean_alpha(cut):
+    # Trim the halo/fringe and softly feather the edge for a cleaner cutout.
+    from PIL import ImageFilter
+    a = cut.split()[3]
+    a = a.filter(ImageFilter.MedianFilter(3))    # remove stray specks
+    a = a.filter(ImageFilter.MinFilter(3))       # erode ~1px -> kills light halo
+    a = a.filter(ImageFilter.GaussianBlur(0.7))  # soft feather
+    cut.putalpha(a)
+    return cut
+
+def _build_card(img_bytes, bg_kind, size=1600, fill=0.80):
     from rembg import remove
-    from PIL import Image, ImageFilter
+    from PIL import Image, ImageFilter, ImageDraw
     import io
     src = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-    if max(src.size) > 1600:
-        src.thumbnail((1600, 1600), Image.LANCZOS)
+    if max(src.size) > 1500:
+        src.thumbnail((1500, 1500), Image.LANCZOS)
     cut = remove(src, session=_rembg_session(), post_process_mask=True).convert("RGBA")
+    cut = _clean_alpha(cut)
     bbox = cut.getbbox()  # drop empty transparent margins around the product
     if bbox:
         cut = cut.crop(bbox)
@@ -1126,13 +1141,25 @@ def _build_card(img_bytes, bg_kind, size=1600, fill=0.82, shadow=True):
     nw, nh = max(1, int(cut.width * scale)), max(1, int(cut.height * scale))
     cut = cut.resize((nw, nh), Image.LANCZOS)
     canvas = _make_background(bg_kind, size).convert("RGBA")
-    x, y = (size - nw) // 2, (size - nh) // 2
-    if shadow and bg_kind != "White":
-        alpha = cut.split()[3]
-        sh = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        sh.paste(Image.new("RGBA", cut.size, (0, 0, 0, 110)), (x, y + int(nh * 0.04)), alpha)
-        sh = sh.filter(ImageFilter.GaussianBlur(max(4, size // 90)))
-        canvas = Image.alpha_composite(canvas, sh)
+    x = (size - nw) // 2
+    y = (size - nh) // 2 - int(size * 0.02)  # sit slightly high so the shadow grounds it
+
+    # 1) soft shape shadow (product silhouette, offset down) -> gives volume
+    alpha = cut.split()[3]
+    shape = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    shape.paste(Image.new("RGBA", cut.size, (0, 0, 0, 90)),
+                (x + int(nw * 0.02), y + int(nh * 0.05)), alpha)
+    shape = shape.filter(ImageFilter.GaussianBlur(max(6, size // 70)))
+    canvas = Image.alpha_composite(canvas, shape)
+
+    # 2) contact shadow (blurred ellipse under the base) -> grounds the product
+    contact = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    ex, ey = nw * 0.42, nh * 0.05
+    ccx, ccy = x + nw / 2, y + nh - ey * 0.3
+    ImageDraw.Draw(contact).ellipse([ccx - ex, ccy - ey, ccx + ex, ccy + ey], fill=(0, 0, 0, 120))
+    contact = contact.filter(ImageFilter.GaussianBlur(max(6, size // 55)))
+    canvas = Image.alpha_composite(canvas, contact)
+
     canvas.paste(cut, (x, y), cut)
     buf = io.BytesIO()
     canvas.convert("RGB").save(buf, format="JPEG", quality=92)
