@@ -1084,11 +1084,17 @@ def render_result(out, t, dl_key, label=""):
 CARD_BACKGROUNDS = ["White", "Light studio", "Soft grey", "Warm beige", "Gradient blue"]
 
 @st.cache_resource(show_spinner=False)
-def _rembg_session():
-    # isnet-general-use = noticeably cleaner cutouts than u2net for products.
-    # Loaded once per container; the model file auto-downloads on first use.
+def _rembg_session(model="birefnet-general-lite"):
+    # BiRefNet = current best free cutout model: far cleaner contours on labels,
+    # handles, straps and thin/transparent parts than isnet/u2net. The "lite"
+    # (swin-tiny) variant keeps memory small enough for Streamlit's free tier.
+    # If this rembg build doesn't ship BiRefNet (or the download fails), fall
+    # back to isnet so the app can never break. Loaded once per container.
     from rembg import new_session
-    return new_session("isnet-general-use")
+    try:
+        return new_session(model)
+    except Exception:
+        return new_session("isnet-general-use")
 
 def _radial_bg(size, inner, outer):
     # Studio look: lighter in the centre, gently darker toward the edges -> depth/volume.
@@ -1114,40 +1120,55 @@ def _make_background(kind, size):
     # White: clean, but a whisper of studio depth so it is not dead-flat.
     return _radial_bg(size, (255, 255, 255), (238, 240, 243))
 
-def _clean_alpha(cut):
-    # Trim the halo/fringe and softly feather the edge for a cleaner cutout.
+def _refine_alpha(cut, erode=True):
+    # Clean the mask edge: kill stray specks, erode the ~1px background halo,
+    # then softly feather so the contour reads smooth instead of jagged.
     from PIL import ImageFilter
     a = cut.split()[3]
     a = a.filter(ImageFilter.MedianFilter(3))    # remove stray specks
-    a = a.filter(ImageFilter.MinFilter(3))       # erode ~1px -> kills light halo
-    a = a.filter(ImageFilter.GaussianBlur(0.7))  # soft feather
+    if erode:
+        a = a.filter(ImageFilter.MinFilter(3))   # erode ~1px -> kills light halo
+    a = a.filter(ImageFilter.GaussianBlur(0.6))  # soft feather
     cut.putalpha(a)
     return cut
+
+# backward-compat alias (older call sites)
+_clean_alpha = _refine_alpha
+
+def _defringe(cut):
+    # Edge colour decontamination: semi-transparent edge pixels still carry the
+    # OLD background colour, which shows up as a grey/white halo on the new
+    # background. We keep the alpha untouched but, in the feather zone, repaint
+    # the RGB with the product's own colour bled outward — so the edge blends
+    # product-over-product, never product-over-old-background. This is the trick
+    # that makes the cutout look "surgical" instead of pasted-on.
+    from PIL import Image, ImageFilter
+    r, g, b, a = cut.split()
+    rgb = Image.merge("RGB", (r, g, b))
+    bled = rgb.filter(ImageFilter.GaussianBlur(2.5))   # product colour spread out
+    solid = a.point(lambda v: 255 if v >= 250 else 0)  # only the fully-opaque core
+    new_rgb = Image.composite(rgb, bled, solid)        # core keeps crisp colour,
+    return Image.merge("RGBA", (*new_rgb.split(), a))  # edge takes bled colour
 
 def _build_card(img_bytes, bg_kind, size=1600, fill=0.80):
     from rembg import remove
     from PIL import Image, ImageFilter, ImageDraw
     import io
     src = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-    if max(src.size) > 1200:  # cap keeps alpha-matting fast + memory-safe
-        src.thumbnail((1200, 1200), Image.LANCZOS)
+    if max(src.size) > 1400:  # a bit more detail for the model; still memory-safe
+        src.thumbnail((1400, 1400), Image.LANCZOS)
+    # BiRefNet already returns a clean, soft, anti-aliased mask — so we skip the
+    # heavy alpha-matting solver (it was the memory hog behind past crashes and
+    # added fringe on hard products). Model mask -> edge refine -> colour defringe
+    # gives a crisper, cleaner contour at a fraction of the memory.
     try:
-        # alpha matting = precise, clean contour edges (the big quality lever)
-        cut = remove(
-            src, session=_rembg_session(),
-            alpha_matting=True,
-            alpha_matting_foreground_threshold=250,
-            alpha_matting_background_threshold=12,
-            alpha_matting_erode_size=6,
-            post_process_mask=True,
-        ).convert("RGBA")
-    except Exception:
-        # never crash the app if matting runs out of memory — plain cutout instead
         cut = remove(src, session=_rembg_session(), post_process_mask=True).convert("RGBA")
-        cut = _clean_alpha(cut)
-    # matting already gives a precise soft edge; just a whisper of feather
-    _a = cut.split()[3].filter(ImageFilter.GaussianBlur(0.4))
-    cut.putalpha(_a)
+    except Exception:
+        # last-resort safety net: plain isnet cutout, never crash the app
+        cut = remove(src, session=_rembg_session("isnet-general-use"),
+                     post_process_mask=True).convert("RGBA")
+    cut = _refine_alpha(cut)   # kill halo + smooth the contour
+    cut = _defringe(cut)       # repaint edge with the product's own colour
     bbox = cut.getbbox()  # drop empty transparent margins around the product
     if bbox:
         cut = cut.crop(bbox)
