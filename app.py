@@ -1248,13 +1248,13 @@ st.markdown(f"<div class='usage'>{_usage_txt}</div>", unsafe_allow_html=True)
 # ---------- mode switch: text listing (existing) vs photo card (new, additive) ----------
 # Visible top-level switch so users can find the image tool on their own. The text
 # generator below is untouched — it simply renders only in "description" mode.
-_card_opt = t.get("mode_card", "Product photo card")
 _mode = st.radio(
     t.get("mode_label", "What do you want to create?"),
-    [t.get("mode_text", "Product description"), _card_opt],
+    ["✍️ " + t.get("mode_text", "Product description"),
+     "🖼️ " + t.get("mode_card", "Product photo card")],
     horizontal=True, key="gen_mode",
 )
-if _mode == _card_opt:
+if _mode.startswith("🖼️"):
     render_image_card_tool(t)
     st.stop()
 
