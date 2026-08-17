@@ -76,6 +76,10 @@ section[data-testid="stSidebar"] h3 {font-size: 1rem;}
 }
 .hero h1 {margin: 0; font-size: 1.7rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.25;}
 .hero p {margin: 10px 0 0; font-size: .97rem; line-height: 1.5; color: #cbd5e1;}
+/* brand wordmark — must match the site header exactly (index.html / app.html):
+   "Selly" in solid text + "AI" in the blue→purple gradient, weight 800. */
+.brandmark {font-weight: 800; font-size: 1.15rem; letter-spacing: .2px; color: #e8ebf2; margin: 0 0 10px;}
+.brandmark span {background: linear-gradient(90deg, #4f7cff, #8a5cf6); -webkit-background-clip: text; background-clip: text; color: transparent;}
 
 /* usage line */
 .usage {text-align: right; font-size: .82rem; color: #94a3b8; margin: 2px 0 10px;}
@@ -434,7 +438,7 @@ def render_auth(a):
         except Exception:
             pass
     if _rec_at:
-        st.markdown(f"<div class='hero'><h1>{a.get('set_new_pw', 'Set a new password')}</h1></div>",
+        st.markdown(f"<div class='hero'><div class='brandmark'>Selly<span>AI</span></div><h1>{a.get('set_new_pw', 'Set a new password')}</h1></div>",
                     unsafe_allow_html=True)
         _np = st.text_input(a.get("new_pw_ph", "New password"), type="password", key="np_new")
         if st.button(a.get("update_pw_btn", "Update password"), type="primary", key="np_btn"):
@@ -454,7 +458,7 @@ def render_auth(a):
                     st.error(a.get("pw_update_err", "Could not update the password."))
         return
 
-    st.markdown(f"<div class='hero'><h1>{a['title']}</h1><p>{a['sub']}</p></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='hero'><div class='brandmark'>Selly<span>AI</span></div><h1>{a['title']}</h1><p>{a['sub']}</p></div>", unsafe_allow_html=True)
     tab_in, tab_up = st.tabs([a["signin"], a["register"]])
     with tab_in:
         if st.session_state.pop("pw_reset_ok", False):
@@ -1080,7 +1084,7 @@ def render_result(out, t, dl_key, label=""):
                        file_name="listing.json", mime="application/json", key=dl_key)
 
 # ---------- UI ----------
-st.markdown(f"<div class='hero'><h1>{t['title']}</h1><p>{t['caption']}</p></div>", unsafe_allow_html=True)
+st.markdown(f"<div class='hero'><div class='brandmark'>Selly<span>AI</span></div><h1>{t['title']}</h1><p>{t['caption']}</p></div>", unsafe_allow_html=True)
 
 if "history" not in st.session_state:
     st.session_state["history"] = []
