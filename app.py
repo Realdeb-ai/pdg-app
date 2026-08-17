@@ -1128,11 +1128,26 @@ def _build_card(img_bytes, bg_kind, size=1600, fill=0.80):
     from rembg import remove
     from PIL import Image, ImageFilter, ImageDraw
     import io
-    src = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-    if max(src.size) > 1500:
-        src.thumbnail((1500, 1500), Image.LANCZOS)
-    cut = remove(src, session=_rembg_session(), post_process_mask=True).convert("RGBA")
-    cut = _clean_alpha(cut)
+    src = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+    if max(src.size) > 1200:  # cap keeps alpha-matting fast + memory-safe
+        src.thumbnail((1200, 1200), Image.LANCZOS)
+    try:
+        # alpha matting = precise, clean contour edges (the big quality lever)
+        cut = remove(
+            src, session=_rembg_session(),
+            alpha_matting=True,
+            alpha_matting_foreground_threshold=250,
+            alpha_matting_background_threshold=12,
+            alpha_matting_erode_size=6,
+            post_process_mask=True,
+        ).convert("RGBA")
+    except Exception:
+        # never crash the app if matting runs out of memory — plain cutout instead
+        cut = remove(src, session=_rembg_session(), post_process_mask=True).convert("RGBA")
+        cut = _clean_alpha(cut)
+    # matting already gives a precise soft edge; just a whisper of feather
+    _a = cut.split()[3].filter(ImageFilter.GaussianBlur(0.4))
+    cut.putalpha(_a)
     bbox = cut.getbbox()  # drop empty transparent margins around the product
     if bbox:
         cut = cut.crop(bbox)
