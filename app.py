@@ -48,16 +48,18 @@ st.set_page_config(page_title="SellyAI", page_icon=_page_icon,
 # ---------- styling ----------
 CSS = """
 <style>
-/* hide default streamlit chrome */
-#MainMenu, header {visibility: hidden;}
+/* hide default streamlit chrome (works in normal AND ?embed=true mode) */
+#MainMenu, header, [data-testid="stHeader"] {display: none !important; visibility: hidden !important;}
 footer {display: none !important;}
-[data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"], .stAppDeployButton {display: none !important;}
+[data-testid="stToolbar"], [data-testid="stToolbarActions"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {display: none !important;}
+.stAppDeployButton, [data-testid="stAppDeployButton"], [data-testid="manage-app-button"], [data-testid="stAppRunningIndicator"] {display: none !important;}
 [data-testid="stElementToolbar"], [data-testid="stElementToolbarButton"] {display: none !important;}
 [data-testid="StyledFullScreenButton"], [title="View fullscreen"], [aria-label="Fullscreen"] {display: none !important;}
-a[href*="streamlit.io"], [class*="viewerBadge"] {display: none !important;}
+/* "Built with Streamlit" viewer/cloud badge — every known variant */
+a[href*="streamlit.io"], a[href*="streamlit.app"], a[href*="share.streamlit"], [class*="viewerBadge"], [class*="_profileContainer"], [class*="_terminalButton"], [data-testid="stBottom"] a[href*="streamlit"] {display: none !important;}
 .block-container, [data-testid="stMainBlockContainer"], [data-testid="stMain"] .block-container {padding-top: 1.2rem; padding-bottom: 3rem; max-width: 760px !important; margin-left: auto !important; margin-right: auto !important;}
 /* dark app background — removes the cheap white frame */
-.stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], body {background: #0e1117 !important;}
+html, body, .stApp, [data-testid="stApp"], [data-testid="stAppViewContainer"], [data-testid="stHeader"], .stAppEmbeddingRoot {background: #0e1117 !important;}
 /* left panel: keep the open arrow visible; slim + tidy */
 [data-testid="stSidebarCollapsedControl"] {display: flex !important; visibility: visible !important; opacity: 1 !important;}
 /* Only size the sidebar when it's actually open; collapsed = full width for centered content */
@@ -65,6 +67,26 @@ section[data-testid="stSidebar"] {background: #0d1117;}
 section[data-testid="stSidebar"][aria-expanded="true"] {width: 300px !important; min-width: 300px !important;}
 section[data-testid="stSidebar"] .block-container {padding: 1rem .7rem;}
 section[data-testid="stSidebar"] h3 {font-size: 1rem;}
+
+/* KILL EVERY BORDER / GREY LINE / SHADOW — incl. the embed-mode frame around the whole app */
+html, body, iframe,
+.stApp, [data-testid="stApp"], .stAppEmbeddingRoot,
+[data-testid="stAppViewContainer"], [data-testid="stMain"], .main, section.main,
+[data-testid="stMainBlockContainer"], .block-container,
+[data-testid="stAppViewBlockContainer"], [data-st-mode="dark"] {
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+/* Bottom service bar / footer / "Built with Streamlit" panel — all variants */
+footer, [data-testid="stFooter"], [data-testid="stBottom"], [data-testid="stBottomBlockContainer"],
+[class*="viewerBadge"], .stAppFooter {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+}
 
 /* hero header — calm, muted, refined */
 .hero {
