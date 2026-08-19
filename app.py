@@ -78,7 +78,7 @@ section[data-testid="stSidebar"] h3 {font-size: 1rem;}
 .hero p {margin: 10px 0 0; font-size: .97rem; line-height: 1.5; color: #cbd5e1;}
 /* brand wordmark — must match the site header exactly (index.html / app.html):
    "Selly" in solid text + "AI" in the blue→purple gradient, weight 800. */
-.brandmark {font-weight: 800; font-size: 1.15rem; letter-spacing: .2px; color: #e8ebf2; margin: 0 0 10px;}
+.brandmark {font-weight: 800; font-size: 1.15rem; letter-spacing: .2px; color: #fff; margin: 0 0 10px;}
 .brandmark span {background: linear-gradient(90deg, #4f7cff, #8a5cf6); -webkit-background-clip: text; background-clip: text; color: transparent;}
 
 /* usage line */
