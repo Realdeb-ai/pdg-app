@@ -1,4 +1,4 @@
-# build: redeploy trigger 2026-08-15
+# build: redeploy trigger 2026-08-19b
 """
 Product Description Generator — SaaS MVP (Streamlit + Gemini)
 Generates SEO-optimized product content (title, description, bullets, tags, meta)
@@ -147,6 +147,43 @@ div[data-testid="stButton"] button[kind="primary"]:hover {background: #4338ca !i
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
+
+# ---------- hard kill of Streamlit embed chrome (footer badge + fullscreen bar + frame) ----------
+# CSS alone can't reliably hit these (Streamlit renames the classes every release),
+# so we reach into the parent document from a 0-height component and remove them by force.
+import streamlit.components.v1 as _components
+_components.html("""
+<script>
+const nuke = () => {
+  try {
+    const d = window.parent.document;
+    // 1) remove known chrome containers
+    d.querySelectorAll(
+      'footer, [data-testid="stToolbar"], [data-testid="stStatusWidget"], [data-testid="stDecoration"], [data-testid="stAppDeployButton"], [data-testid="stBottom"], [data-testid="stBottomBlockContainer"], [class*="viewerBadge"], [class*="_viewerBadge"], [class*="_profileContainer"], [class*="_terminalButton"]'
+    ).forEach(e => e.remove());
+    // 2) remove anything whose text is the badge / fullscreen label
+    d.querySelectorAll('a, span, div, footer, p, button').forEach(e => {
+      if (e.children.length) return;
+      const t = (e.textContent || '').trim().toLowerCase();
+      if (t === 'built with streamlit' || t === 'made with streamlit' || t === 'hosted with streamlit' || t === 'fullscreen') {
+        const box = e.closest('footer') || e.closest('[data-testid]') || e.parentElement || e;
+        box.remove();
+      }
+    });
+    // 3) strip the grey frame / border / shadow off every structural container
+    ['html','body','.stApp','.stAppEmbeddingRoot','[data-testid="stApp"]','[data-testid="stAppViewContainer"]','[data-testid="stMain"]','.main','section.main','[data-testid="stMainBlockContainer"]','.block-container'].forEach(sel => {
+      d.querySelectorAll(sel).forEach(e => {
+        e.style.setProperty('border', 'none', 'important');
+        e.style.setProperty('box-shadow', 'none', 'important');
+        e.style.setProperty('outline', 'none', 'important');
+      });
+    });
+  } catch (err) { /* cross-origin or not ready yet — retry on next tick */ }
+};
+nuke();
+setInterval(nuke, 400);
+</script>
+""", height=0)
 
 # ---------- Supabase auth (email + password) ----------
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", "https://jpghxxnnvrbqzdmbkpqj.supabase.co").rstrip("/")
